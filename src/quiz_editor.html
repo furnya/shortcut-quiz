@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Shortcut Quiz</title>
+  </head>
+
+  <body>
+    <h1>Shortcut Quiz</h1>
+    <p>What is the shortcut for "{{TITLE}}"? ({{KEY}})</p>
+    <p>Press the key combination or show the answer if you forgot:</p>
+    <button onclick="showAnswer()">Show Answer</button>
+    <p id="answer" style="display: none">
+      The shortcut for "{{TITLE}}" is <strong id="keyAnswer">{{KEY}}</strong>
+    </p>
+    <script>
+      // const vscode = acquireVsCodeApi();
+      const key = '{{KEY}}';
+      // const key = document.getElementById('keyAnswer').innerText;
+
+      const steps = [];
+      let currentStep = 0;
+      for (const step of key.split(' ')) {
+        const keys = step.toLowerCase().split('+');
+        steps.push(keys);
+      }
+      console.log(steps);
+
+      function showAnswer() {
+        document.getElementById('answer').style.display = 'block';
+      }
+
+      document.addEventListener('keydown', (event) => {
+        console.log(event.key);
+        const step = steps[currentStep];
+        console.log(step);
+        const pressedKey = event.key.toLowerCase();
+        if (
+          (!step.includes('ctrl') || event.ctrlKey) &&
+          (!step.includes('shift') || event.shiftKey) &&
+          (!step.includes('alt') || event.altKey) &&
+          (!step.includes('meta') || event.metaKey) &&
+          !['ctrl', 'shift', 'alt', 'meta'].includes(pressedKey) &&
+          step.includes(pressedKey)
+        ) {
+          event.preventDefault(); // Prevent VS Code from handling it
+          event.stopPropagation(); // Stop propagation to parent elements
+          currentStep++;
+          if (currentStep === steps.length) {
+            // Show a message in the Webview
+            // vscode.postMessage({
+            //   command: 'alert',
+            //   text: 'You pressed the correct key combination!',
+            // });
+            document.getElementById('answer').style.display = 'block';
+          }
+        } else {
+          currentStep = 0;
+        }
+      });
+    </script>
+  </body>
+</html>
