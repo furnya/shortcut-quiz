@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -7,14 +7,37 @@
   </head>
 
   <body>
-    <h1>Shortcut Quiz</h1>
-    <p>What is the shortcut for "{{TITLE}}"? ({{KEY}})</p>
-    <p>Press the key combination or show the answer if you forgot:</p>
-    <button onclick="showAnswer()">Show Answer</button>
-    <p id="answer" style="display: none">
-      The shortcut for "{{TITLE}}" is <strong id="keyAnswer">{{KEY}}</strong>
-    </p>
-    <script>
+    <script type="module">
+      import { h, render, Component } from 'https://esm.sh/preact';
+      import htm from 'https://esm.sh/htm';
+
+      window.addEventListener('message', (event) => {
+        const message = event.data; // The JSON data our extension sent
+        let keybindings = [];
+        if (message.command === 'setKeybindings') {
+          keybindings = message.keybindings;
+        }
+        const html = htm.bind(h);
+
+        // Create your app
+        // const app = h('h1', null, 'Hello World!');
+        class MyComponent extends Component {
+          render(props, state) {
+            return html`<div>
+              ${keybindings.map(({ key, title }) => html`<h1>Key: ${key}, Title: ${title}</h1>`)}
+            </div>`;
+          }
+        }
+        function MyComponent2(props) {
+          return html`<h1>Hello, ${props.name}!</h1>`;
+        }
+
+        // const app = html`<MyComponent name="World" />`;
+        // const app = html`<MyComponent2 name="World" />`;
+        const app = h(MyComponent, { names: ['a', 'b', 'c'] });
+
+        render(app, document.body);
+      });
       // const vscode = acquireVsCodeApi();
       const key = '{{KEY}}';
       // const key = document.getElementById('keyAnswer').innerText;
@@ -27,9 +50,10 @@
       }
       console.log(steps);
 
-      function showAnswer() {
+      export function showAnswer() {
         document.getElementById('answer').style.display = 'block';
       }
+      window.showAnswer = showAnswer;
 
       document.addEventListener('keydown', (event) => {
         console.log(event.key);
@@ -60,5 +84,12 @@
         }
       });
     </script>
+    <!-- <h1>Shortcut Quiz</h1> -->
+    <p>What is the shortcut for "{{TITLE}}"? ({{KEY}})</p>
+    <p>Press the key combination or show the answer if you forgot:</p>
+    <button onclick="showAnswer()">Show Answer</button>
+    <p id="answer" style="display: none">
+      The shortcut for "{{TITLE}}" is <strong id="keyAnswer">{{KEY}}</strong>
+    </p>
   </body>
 </html>
