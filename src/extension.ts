@@ -1,5 +1,6 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
+// import * as fs from 'fs';
 import * as fsAsync from 'fs/promises';
 import * as path from 'path';
 import * as vscode from 'vscode';
@@ -95,21 +96,30 @@ async function openHtmlEditor(
   // Load HTML skeleton from file
   // const htmlFilePath = path.join(context.extensionPath, 'src', 'quiz_editor.html');
   const htmlFilePath = path.join(context.extensionPath, 'src', 'quiz_editor2.html');
+  // let htmlContent = fs.readFileSync(htmlFilePath, 'utf8');
   let htmlContent = await fsAsync.readFile(htmlFilePath, 'utf8');
 
   // Inject custom content
   // htmlContent = htmlContent.replaceAll('{{TITLE}}', title);
   // htmlContent = htmlContent.replaceAll('{{KEY}}', key);
 
+  const keyMappingsPath = path.join(context.extensionPath, 'src', 'key_mappings.json');
+  // const keyMappingsJson = fs.readFileSync(keyMappingsPath, 'utf8');
+  const keyMappingsJson = await fsAsync.readFile(keyMappingsPath, 'utf8');
+  const keyMappings = JSON.parse(keyMappingsJson);
+  // console.log(keyMappings);
+
   // Set the panel content
   panel.webview.html = htmlContent;
-  panel.webview.postMessage({ command: 'setKeybindings', keybindings });
+  panel.webview.postMessage({ command: 'setKeybindings', keybindings, keyMappings });
   panel.webview.onDidReceiveMessage((message) => {
     if (message.command === 'keybindingAnswer') {
       const shortcuts = context.globalState.get<Shortcuts>('shortcuts') ?? {};
       const shortcut = shortcuts[message.keybindingCommand];
       shortcut.learningState = shortcut.learningState + (message.correct ? 1 : -1);
       context.globalState.update('shortcuts', shortcuts);
+    } else if (message.command === 'ready') {
+      // panel.webview.postMessage({ command: 'setKeybindings', keybindings, keyMappings });
     }
   });
 }

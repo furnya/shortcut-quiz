@@ -1,0 +1,18 @@
+{
+    "down": "ArrowDown",
+    "up": "ArrowUp",
+    "left": "ArrowLeft",
+    "right": "ArrowRight",
+    "space": " ",
+    "plus": "+",
+    "minus": "-",
+    "win": "Meta",
+    "cmd": "Meta",
+    "pausebreak": "Pause",
+    "numpad_multiply": "NumpadMultiply",
+    "numpad_add": "NumpadAdd",
+    "numpad_separator": "NumpadDecimal",
+    "numpad_subtract": "NumpadSubtract",
+    "numpad_decimal": "NumpadDecimal",
+    "numpad_divide": "NumpadDivide"
+}

@@ -24,8 +24,8 @@
       .keyboard-hint {
         display: flex;
         gap: 8px;
-        margin-bottom: 20px;
         flex-wrap: wrap;
+        margin-top: 5px;
       }
 
       .key {
@@ -96,6 +96,7 @@
 
       // Store state in vscode state storage
       const previousState = vscode.getState() || { scores: {} };
+      let keyMappings = {};
 
       class KeybindingQuiz extends Component {
         constructor(props) {
@@ -115,6 +116,7 @@
         componentDidMount() {
           window.addEventListener('message', this.handleMessage);
           document.addEventListener('keydown', this.handleKeydown);
+          // vscode.postMessage({ command: 'ready' });
         }
 
         componentWillUnmount() {
@@ -125,8 +127,17 @@
         handleMessage = (event) => {
           const message = event.data;
           if (message.command === 'setKeybindings') {
+            keyMappings = message.keyMappings || {};
+            console.log('Received keybindings', message.keybindings);
             this.initializeKeybindings(message.keybindings);
           }
+        };
+
+        translateVSCodeKey = (vsCodeKey) => {
+          // Convert to lowercase for case-insensitive matching
+          const key = vsCodeKey.toLowerCase();
+          // Return the mapped browser key or the original if no mapping exists
+          return keyMappings[key] || vsCodeKey;
         };
 
         initializeKeybindings = (keybindings) => {
@@ -144,9 +155,23 @@
           if (!keybinding) return [];
 
           const steps = [];
-          for (const step of keybinding.key.split(' ')) {
-            const keys = step.toLowerCase().split('+');
-            steps.push(keys);
+          for (const keymatch of keybinding.key.split(' ')) {
+            // Split by + to handle key combinations
+            const vsCodeKeys = keymatch.toLowerCase().split('+');
+            steps.push({
+              key: this.translateVSCodeKey(vsCodeKeys[vsCodeKeys.length - 1]),
+              modifiers: vsCodeKeys
+                .slice(0, vsCodeKeys.length - 1)
+                .map((k) => this.translateVSCodeKey(k)),
+            });
+            // Translate each VS Code key to browser event key
+            // const browserKeys = vsCodeKeys.map((key) => {
+            //   // Don't translate modifier keys, as we handle them separately
+            //   if (['ctrl', 'shift', 'alt', 'meta'].includes(key)) {
+            //     return key;
+            //   }
+            //   return this.translateVSCodeKey(key);
+            // });
           }
           return steps;
         };
@@ -159,17 +184,22 @@
 
           const step = currentSteps[currentStep];
           if (!step) return;
+          const { key, modifiers } = step;
 
-          const pressedKey = event.key.toLowerCase();
+          let pressedKey = event.key.toLowerCase();
+          const pressedKeyCode = event.code.toLowerCase();
+          if (pressedKeyCode.startsWith('Numpad')) {
+            pressedKey = null;
+          }
 
           // Check if the pressed key matches the current step
           if (
-            (!step.includes('ctrl') || event.ctrlKey) &&
-            (!step.includes('shift') || event.shiftKey) &&
-            (!step.includes('alt') || event.altKey) &&
-            (!step.includes('meta') || event.metaKey) &&
+            (!modifiers.includes('ctrl') || event.ctrlKey) &&
+            (!modifiers.includes('shift') || event.shiftKey) &&
+            (!modifiers.includes('alt') || event.altKey) &&
+            (!modifiers.includes('meta') || event.metaKey) &&
             !['ctrl', 'shift', 'alt', 'meta'].includes(pressedKey) &&
-            step.includes(pressedKey)
+            [pressedKey, pressedKeyCode].includes(key)
           ) {
             event.preventDefault();
             event.stopPropagation();
@@ -293,7 +323,8 @@
                         ? 'step current'
                         : 'step upcoming'}
                   >
-                    ${step.map((key) => html`<span class="key">${key}</span>`)}
+                    ${step.modifiers.map((key) => html`<span class="key">${key}</span>`)}
+                    <span class="key">${step.key}</span>
                     ${stepIndex < currentSteps.length - 1 ? ' then ' : ''}
                   </div>
                 `,
@@ -335,17 +366,15 @@
 
               <div class="question">What is the shortcut for "${current.title}"?</div>
 
-              ${this.renderKeyboardHint()} ${this.renderFeedback()}
-
-              <div>
+              ${this.renderFeedback()}
+              ${!showAnswer &&
+              html`<div>
                 <button onClick=${this.handleShowAnswer} disabled=${showAnswer}>Show Answer</button>
-              </div>
-
+              </div>`}
               ${showAnswer &&
               html`
                 <div class="answer">
-                  The shortcut for "${current.title}" is
-                  <strong>${current.key}</strong>
+                  The shortcut for "${current.title}" is ${this.renderKeyboardHint()}
                 </div>
 
                 <button onClick=${this.handleNext}>Next Question</button>
