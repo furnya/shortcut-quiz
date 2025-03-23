@@ -7,6 +7,7 @@ import {
   loadKeybindingsFromDefault,
   loadKeybindingsFromConfiguration,
   loadKeybindingsFromExtensions,
+  Shortcuts,
 } from './shortcuts';
 
 // This method is called when your extension is activated
@@ -29,6 +30,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   const activateCommand = vscode.commands.registerCommand('shortcut-quiz.activate', async () => {
     if (!context.globalState.get('shortcuts')) {
+    // if (true) {
       vscode.window.showInformationMessage('Loading shortcuts...');
       await loadKeybindingsFromDefault(context);
       await loadKeybindingsFromExtensions(context);
@@ -36,7 +38,7 @@ export async function activate(context: vscode.ExtensionContext) {
       vscode.window.showInformationMessage('Shortcuts loaded');
     }
 
-    const shortcuts = context.globalState.get<any>('shortcuts');
+    const shortcuts = context.globalState.get<Shortcuts>('shortcuts') ?? {};
     const testShortcut: any = Object.values(shortcuts)[0];
     await openHtmlEditor(
       context,
@@ -45,9 +47,11 @@ export async function activate(context: vscode.ExtensionContext) {
       undefined,
       undefined,
       // [{ title: testShortcut.title, key: Object.keys(testShortcut.keys)[0] }],
-      Object.values(shortcuts).slice(0,10).map((s: any) => ({ title: s.title, key: Object.keys(s.keys)[0] })),
+      Object.entries(shortcuts)
+        .slice(0, 10)
+        .map(([k, s]) => ({ title: s.title, key: Object.keys(s.keys)[0], command: k })),
     );
-    setInterval(async () => checkAndShowEditor(context), 5000);
+    // setInterval(async () => checkAndShowEditor(context), 5000);
   });
   const inspectGlobalStateCommand = vscode.commands.registerCommand(
     'shortcut-quiz.inspectGlobalState',
@@ -89,16 +93,25 @@ async function openHtmlEditor(
   );
 
   // Load HTML skeleton from file
-  const htmlFilePath = path.join(context.extensionPath, 'src', 'quiz_editor.html');
+  // const htmlFilePath = path.join(context.extensionPath, 'src', 'quiz_editor.html');
+  const htmlFilePath = path.join(context.extensionPath, 'src', 'quiz_editor2.html');
   let htmlContent = await fsAsync.readFile(htmlFilePath, 'utf8');
 
   // Inject custom content
-  htmlContent = htmlContent.replaceAll('{{TITLE}}', title);
-  htmlContent = htmlContent.replaceAll('{{KEY}}', key);
+  // htmlContent = htmlContent.replaceAll('{{TITLE}}', title);
+  // htmlContent = htmlContent.replaceAll('{{KEY}}', key);
 
   // Set the panel content
   panel.webview.html = htmlContent;
   panel.webview.postMessage({ command: 'setKeybindings', keybindings });
+  panel.webview.onDidReceiveMessage((message) => {
+    if (message.command === 'keybindingAnswer') {
+      const shortcuts = context.globalState.get<Shortcuts>('shortcuts') ?? {};
+      const shortcut = shortcuts[message.keybindingCommand];
+      shortcut.learningState = shortcut.learningState + (message.correct ? 1 : -1);
+      context.globalState.update('shortcuts', shortcuts);
+    }
+  });
 }
 
 const INTERVAL_MS = 100 * 1000; // 10 seconds
