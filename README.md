@@ -1,16 +1,46 @@
-# shortcut-quiz README
+# Shortcut Quiz
 
-This is the README for your extension "shortcut-quiz". After writing up a brief description, we recommend including the following sections.
+Shortcut Quiz is a web-based application designed to help users learn and practice keyboard shortcuts interactively. It is particularly useful for developers and power users who want to improve their productivity by mastering keybindings.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+- Interactive quiz to test your knowledge of keyboard shortcuts.
+- Real-time feedback on correct and incorrect key presses.
+- Support for multi-step keybinding sequences.
+- Visual hints for keyboard shortcuts.
+- Progress tracking and completion summary.
 
-For example if there is an image subfolder under your extension project workspace:
+## How It Works
 
-\!\[feature X\]\(images/feature-x.png\)
+1. The application displays a question asking for the shortcut of a specific command.
+2. Users can type the shortcut using their keyboard.
+3. The app provides feedback on whether the input is correct or incorrect.
+4. Users can reveal the correct answer or proceed to the next question.
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+## Getting Started
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/your-username/shortcut-quiz.git
+   ```
+2. Open the `src/quiz_editor2.html` file in a modern web browser.
+3. Follow the on-screen instructions to start the quiz.
+
+## Development
+
+This project uses [Preact](https://preactjs.com/) for rendering and is designed to integrate with Visual Studio Code extensions. To modify or extend the functionality:
+
+1. Edit the `src/quiz_editor2.html` file.
+2. Use the browser's developer tools to debug and test changes.
+3. Reload the file in the browser to see updates.
+
+## Contributing
+
+Contributions are welcome! Feel free to submit issues or pull requests to improve the project.
+
+## License
+
+This project is licensed under the MIT License. See the `LICENSE` file for details.
 
 ## Requirements
 

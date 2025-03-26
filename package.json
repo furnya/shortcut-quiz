@@ -1,6 +1,7 @@
 {
   "name": "shortcut-quiz",
-  "displayName": "shortcut-quiz",
+  "displayName": "Shortcut Quiz",
+  "publisher": "furnya",
   "description": "Periodic quizzes of common keyboard shortcuts & more",
   "version": "0.0.1",
   "engines": {
