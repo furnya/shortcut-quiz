@@ -14,5 +14,17 @@
     "numpad_separator": "NumpadDecimal",
     "numpad_subtract": "NumpadSubtract",
     "numpad_decimal": "NumpadDecimal",
-    "numpad_divide": "NumpadDivide"
+    "numpad_divide": "NumpadDivide",
+    "oem_5": "backquote",
+    "oem_4": "ß",
+    "oem_6": "equal",
+    "oem_1": "ü",
+    "oem_plus": "+",
+    "oem_3": "ö",
+    "oem_7": "ä",
+    "oem_2": "#",
+    "oem_comma": ",",
+    "oem_period": ".",
+    "oem_minus": "-",
+    "oem_102": "<"
 }

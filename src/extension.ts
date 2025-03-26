@@ -18,6 +18,15 @@ export async function activate(context: vscode.ExtensionContext) {
   // This line of code will only be executed once when your extension is activated
   console.log('Congratulations, your extension "shortcut-quiz" is now active!');
 
+  const importantKeybindingsPath = path.join(
+    context.extensionPath,
+    'src',
+    'keybinding_selection.json',
+  );
+  const importantKeybindingsJson = await fsAsync.readFile(importantKeybindingsPath, 'utf8');
+  const importantKeybindings = JSON.parse(importantKeybindingsJson) as string[];
+  context.globalState.update('importantKeybindings', importantKeybindings);
+
   const keybindingsChangeListener = vscode.workspace.onDidChangeConfiguration(async (e) => {
     console.log('Config has changed');
     await loadKeybindingsFromConfiguration(context);
@@ -30,8 +39,9 @@ export async function activate(context: vscode.ExtensionContext) {
   });
 
   const activateCommand = vscode.commands.registerCommand('shortcut-quiz.activate', async () => {
-    if (!context.globalState.get('shortcuts')) {
+    // context.globalState.update('shortcuts', {});
     // if (true) {
+    if (!context.globalState.get('shortcuts')) {
       vscode.window.showInformationMessage('Loading shortcuts...');
       await loadKeybindingsFromDefault(context);
       await loadKeybindingsFromExtensions(context);
@@ -49,8 +59,10 @@ export async function activate(context: vscode.ExtensionContext) {
       undefined,
       // [{ title: testShortcut.title, key: Object.keys(testShortcut.keys)[0] }],
       Object.entries(shortcuts)
-        .slice(0, 10)
-        .map(([k, s]) => ({ title: s.title, key: Object.keys(s.keys)[0], command: k })),
+        .filter(([k, s]) => s.important)
+        // .slice(0, 10)
+        .slice(10, 20)
+        .map(([k, s]) => ({ title: s.title, keys: Object.keys(s.keys), command: k })),
     );
     // setInterval(async () => checkAndShowEditor(context), 5000);
   });

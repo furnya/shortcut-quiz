@@ -23,7 +23,8 @@
 
       .keyboard-hint {
         display: flex;
-        gap: 8px;
+        align-items: center;
+        gap: 4px;
         flex-wrap: wrap;
         margin-top: 5px;
       }
@@ -67,6 +68,52 @@
       .feedback {
         margin-top: 15px;
         height: 20px;
+        animation: fade-in 0.3s ease-in-out forwards;
+        /* opacity: 1; */
+        /* transition: opacity 10s ease-in-out, transform 10s ease-in-out; */
+        /* transition: opacity 10s ease-in-out; */
+      }
+
+      .feedback.incorrect {
+        /* animation: fade-in 10s ease-in-out forwards; */
+        animation: fadeInOut 6s ease-in-out forwards;
+      }
+
+      /* .feedback.fade-out {
+        opacity: 0;
+        transform: translateY(-10px);
+        height: 0;
+        margin-top: 0;
+      } */
+
+      @keyframes fade-in {
+        from {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes fadeInOut {
+        0% {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+        5% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+        95% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+        100% {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
       }
 
       .correct {
@@ -95,7 +142,7 @@
       const vscode = acquireVsCodeApi();
 
       // Store state in vscode state storage
-      const previousState = vscode.getState() || { scores: {} };
+      // const previousState = vscode.getState() || { scores: {} };
       let keyMappings = {};
 
       class KeybindingQuiz extends Component {
@@ -104,13 +151,16 @@
           this.state = {
             keybindings: [],
             currentIndex: 0,
-            currentStep: 0,
+            currentStep: [],
             currentSteps: [],
             showAnswer: false,
             feedback: null,
             isComplete: false,
-            scores: previousState.scores,
+            isFadingOut: false,
+            // scores: previousState.scores,
           };
+          this.feedbackTimer = null;
+          this.fadeOutTimer = null;
         }
 
         componentDidMount() {
@@ -122,6 +172,12 @@
         componentWillUnmount() {
           window.removeEventListener('message', this.handleMessage);
           document.removeEventListener('keydown', this.handleKeydown);
+          if (this.feedbackTimer) {
+            clearTimeout(this.feedbackTimer);
+          }
+          if (this.fadeOutTimer) {
+            clearTimeout(this.fadeOutTimer);
+          }
         }
 
         handleMessage = (event) => {
@@ -137,104 +193,135 @@
           // Convert to lowercase for case-insensitive matching
           const key = vsCodeKey.toLowerCase();
           // Return the mapped browser key or the original if no mapping exists
-          return keyMappings[key] || vsCodeKey;
+          return (keyMappings[key] || vsCodeKey).toLowerCase();
         };
 
         initializeKeybindings = (keybindings) => {
           if (!keybindings || !keybindings.length) return;
 
-          const currentSteps = this.getStepsFromKeybinding(keybindings[0]);
+          const currentSteps = this.getStepsFromKeybindings(keybindings[0]);
 
+          console.log('Current steps:', currentSteps);
           this.setState({
             keybindings,
             currentSteps,
+            currentStep: currentSteps.map((_) => 0),
           });
         };
 
-        getStepsFromKeybinding = (keybinding) => {
-          if (!keybinding) return [];
+        getStepsFromKeybindings = (keybinding) => {
+          if (!keybinding || !keybinding.keys.length) return [];
 
           const steps = [];
-          for (const keymatch of keybinding.key.split(' ')) {
-            // Split by + to handle key combinations
-            const vsCodeKeys = keymatch.toLowerCase().split('+');
-            steps.push({
-              key: this.translateVSCodeKey(vsCodeKeys[vsCodeKeys.length - 1]),
-              modifiers: vsCodeKeys
-                .slice(0, vsCodeKeys.length - 1)
-                .map((k) => this.translateVSCodeKey(k)),
-            });
-            // Translate each VS Code key to browser event key
-            // const browserKeys = vsCodeKeys.map((key) => {
-            //   // Don't translate modifier keys, as we handle them separately
-            //   if (['ctrl', 'shift', 'alt', 'meta'].includes(key)) {
-            //     return key;
-            //   }
-            //   return this.translateVSCodeKey(key);
-            // });
+          for (const k of keybinding.keys) {
+            const step = [];
+            for (const keymatch of k.split(' ')) {
+              // Split by + to handle key combinations
+              const vsCodeKeys = keymatch.toLowerCase().split('+');
+              step.push({
+                key: this.translateVSCodeKey(vsCodeKeys[vsCodeKeys.length - 1]),
+                modifiers: vsCodeKeys
+                  .slice(0, vsCodeKeys.length - 1)
+                  .map((k) => this.translateVSCodeKey(k)),
+              });
+              // Translate each VS Code key to browser event key
+              // const browserKeys = vsCodeKeys.map((key) => {
+              //   // Don't translate modifier keys, as we handle them separately
+              //   if (['ctrl', 'shift', 'alt', 'meta'].includes(key)) {
+              //     return key;
+              //   }
+              //   return this.translateVSCodeKey(key);
+              // });
+            }
+            steps.push(step);
           }
           return steps;
         };
 
         handleKeydown = (event) => {
+          console.log('Keydown event:', event);
           const { currentStep, currentSteps, showAnswer } = this.state;
+          console.log('Current step:', currentStep);
+          console.log('Current steps:', currentSteps);
+          console.log('Show answer:', showAnswer);
 
           // If answer is already showing, don't process keypresses
           if (showAnswer) return;
 
-          const step = currentSteps[currentStep];
-          if (!step) return;
-          const { key, modifiers } = step;
-
+          const steps = currentSteps.map((s, i) => s[currentStep[i]]);
+          console.log('Steps:', steps);
+          if (!steps.length) return;
           let pressedKey = event.key.toLowerCase();
           const pressedKeyCode = event.code.toLowerCase();
           if (pressedKeyCode.startsWith('Numpad')) {
             pressedKey = null;
           }
+          console.debug('Pressed key, code:', pressedKey, pressedKeyCode);
+          if (['control', 'shift', 'alt', 'meta'].includes(pressedKey)) {
+            return;
+          }
+          let correctSteps = steps.map((_) => false);
+          for (const [i, step] of steps.entries()) {
+            const { key, modifiers } = step;
 
-          // Check if the pressed key matches the current step
-          if (
-            (!modifiers.includes('ctrl') || event.ctrlKey) &&
-            (!modifiers.includes('shift') || event.shiftKey) &&
-            (!modifiers.includes('alt') || event.altKey) &&
-            (!modifiers.includes('meta') || event.metaKey) &&
-            !['ctrl', 'shift', 'alt', 'meta'].includes(pressedKey) &&
-            [pressedKey, pressedKeyCode].includes(key)
-          ) {
+            console.debug('Expected key:', key);
+            console.debug('Expected modifiers:', modifiers);
+
+            // Check if the pressed key matches the current step
+            if (
+              (!modifiers.includes('ctrl') || event.ctrlKey) &&
+              (!modifiers.includes('shift') || event.shiftKey) &&
+              (!modifiers.includes('alt') || event.altKey) &&
+              (!modifiers.includes('meta') || event.metaKey) &&
+              [pressedKey, pressedKeyCode].includes(key)
+            ) {
+              correctSteps[i] = true;
+            }
+          }
+          const newCurrentStep = currentStep.map((s, i) => (correctSteps[i] ? s + 1 : 0));
+          if (correctSteps.some((s) => s)) {
             event.preventDefault();
             event.stopPropagation();
-
-            if (currentStep === currentSteps.length - 1) {
+            if (newCurrentStep.some((s, i) => s >= currentSteps[i].length)) {
               // Correct sequence completed
               this.handleCorrectAnswer();
             } else {
               // Move to next step in the sequence
               this.setState({
-                currentStep: currentStep + 1,
+                currentStep: newCurrentStep,
                 feedback: { type: 'progress', text: 'Keep going...' },
               });
             }
           } else {
+            if (this.feedbackTimer) {
+              clearTimeout(this.feedbackTimer);
+            }
+            if (this.fadeOutTimer) {
+              clearTimeout(this.fadeOutTimer);
+            }
             // Reset on incorrect key
             this.setState({
-              currentStep: 0,
+              currentStep: newCurrentStep,
               feedback: { type: 'incorrect', text: 'Incorrect key, try again' },
+              feedbackKey: this.state.feedbackKey + 1, // Increment key to force re-render
+              // isFadingOut: false,
             });
           }
         };
 
         handleCorrectAnswer = () => {
-          const { keybindings, currentIndex, scores } = this.state;
+          // const { keybindings, currentIndex, scores } = this.state;
+          const { keybindings, currentIndex } = this.state;
           const current = keybindings[currentIndex];
 
           // Update score for this keybinding
-          const updatedScores = { ...scores };
-          updatedScores[current.command] = (updatedScores[current.command] || 0) + 1;
+          // const updatedScores = { ...scores };
+          // updatedScores[current.command] = (updatedScores[current.command] || 0) + 1;
 
           this.setState({
             showAnswer: true,
             feedback: { type: 'correct', text: 'Correct! Well done.' },
-            scores: updatedScores,
+            // scores: updatedScores,
           });
 
           // Send message to extension
@@ -245,7 +332,7 @@
           });
 
           // Save state to vscode storage
-          vscode.setState({ scores: updatedScores });
+          // vscode.setState({ scores: updatedScores });
         };
 
         handleShowAnswer = () => {
@@ -253,12 +340,12 @@
           const current = keybindings[currentIndex];
 
           // Update score for this keybinding (negative)
-          const updatedScores = { ...scores };
-          updatedScores[current.command] = (updatedScores[current.command] || 0) - 1;
+          // const updatedScores = { ...scores };
+          // updatedScores[current.command] = (updatedScores[current.command] || 0) - 1;
 
           this.setState({
             showAnswer: true,
-            scores: updatedScores,
+            // scores: updatedScores,
           });
 
           // Send message to extension
@@ -269,7 +356,7 @@
           });
 
           // Save state to vscode storage
-          vscode.setState({ scores: updatedScores });
+          // vscode.setState({ scores: updatedScores });
         };
 
         handleNext = () => {
@@ -282,12 +369,12 @@
             return;
           }
 
-          const nextSteps = this.getStepsFromKeybinding(keybindings[nextIndex]);
+          const nextSteps = this.getStepsFromKeybindings(keybindings[nextIndex]);
 
           this.setState({
             currentIndex: nextIndex,
             currentSteps: nextSteps,
-            currentStep: 0,
+            currentStep: nextSteps.map((_) => 0),
             showAnswer: false,
             feedback: null,
           });
@@ -295,12 +382,12 @@
 
         handleRestart = () => {
           const { keybindings } = this.state;
-          const firstSteps = this.getStepsFromKeybinding(keybindings[0]);
+          const firstSteps = this.getStepsFromKeybindings(keybindings[0]);
 
           this.setState({
             currentIndex: 0,
             currentSteps: firstSteps,
-            currentStep: 0,
+            currentStep: firstSteps.map((_) => 0),
             showAnswer: false,
             feedback: null,
             isComplete: false,
@@ -308,37 +395,46 @@
         };
 
         renderKeyboardHint = () => {
-          const { currentStep, currentSteps } = this.state;
+          const { currentSteps } = this.state;
 
           if (!currentSteps || currentSteps.length === 0) return null;
 
           return html`
-            <div class="keyboard-hint">
+            <ul>
               ${currentSteps.map(
-                (step, stepIndex) => html`
-                  <div
-                    class=${stepIndex < currentStep
-                      ? 'step completed'
-                      : stepIndex === currentStep
-                        ? 'step current'
-                        : 'step upcoming'}
-                  >
-                    ${step.modifiers.map((key) => html`<span class="key">${key}</span>`)}
-                    <span class="key">${step.key}</span>
-                    ${stepIndex < currentSteps.length - 1 ? ' then ' : ''}
-                  </div>
+                (s) => html`
+                  <li>
+                    <div class="keyboard-hint">
+                      ${s.map(
+                        (step, stepIndex) =>
+                          html`${step.modifiers.map(
+                              (key) => html`<span class="key">${key}</span>+`,
+                            )}
+                            <span class="key">${step.key}</span>
+                            ${stepIndex < s.length - 1 ? ' then ' : ''}`,
+                      )}
+                    </div>
+                  </li>
                 `,
               )}
-            </div>
+            </ul>
           `;
         };
 
         renderFeedback = () => {
-          const { feedback } = this.state;
+          const { feedback, feedbackKey } = this.state;
 
           if (!feedback) return null;
 
-          return html` <div class="feedback ${feedback.type}">${feedback.text}</div> `;
+          // if (feedback.type === 'incorrect') {
+          //   return html`
+          //     <div key=${feedbackKey} class="feedback incorrect">${feedback.text}</div>
+          //   `;
+          // }
+
+          return html`
+            <div key=${feedbackKey} class="feedback ${feedback.type}">${feedback.text}</div>
+          `;
         };
 
         render() {
@@ -364,7 +460,9 @@
             <div>
               <div class="progress">Question ${currentIndex + 1}/${keybindings.length}</div>
 
-              <div class="question">What is the shortcut for "${current.title}"?</div>
+              <div class="question">
+                What is the shortcut for "${current.title}" (${current.command})?
+              </div>
 
               ${this.renderFeedback()}
               ${!showAnswer &&
@@ -374,7 +472,7 @@
               ${showAnswer &&
               html`
                 <div class="answer">
-                  The shortcut for "${current.title}" is ${this.renderKeyboardHint()}
+                  The shortcuts for "${current.title}" are ${this.renderKeyboardHint()}
                 </div>
 
                 <button onClick=${this.handleNext}>Next Question</button>

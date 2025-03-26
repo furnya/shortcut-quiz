@@ -7,6 +7,7 @@ export interface ShortcutImport {
   key: string;
   when?: string;
   title?: string;
+  origin?: string;
 }
 
 export interface Shortcuts {
@@ -14,10 +15,16 @@ export interface Shortcuts {
     title?: string;
     keys: { [key: string]: string[] | null };
     learningState: number;
+    origins: string[];
+    important: boolean;
   };
 }
 
-export function addKeybinding(shortcuts: Shortcuts, { command, key, when, title }: ShortcutImport) {
+export function addKeybinding(
+  shortcuts: Shortcuts,
+  { command, key, when, title, origin }: ShortcutImport,
+  importantKeybindings: string[],
+) {
   const normalizedKey = normalizeKey(key);
   if (!shortcuts[command]) {
     shortcuts[command] = {
@@ -26,9 +33,14 @@ export function addKeybinding(shortcuts: Shortcuts, { command, key, when, title 
         [normalizeKey(normalizedKey)]: when ? [when] : null,
       },
       learningState: 0,
+      origins: origin ? [origin] : [],
+      important: importantKeybindings.includes(command),
     };
   } else {
     const existingKeybinding = shortcuts[command];
+    if (origin && !existingKeybinding.origins.includes(origin)) {
+      existingKeybinding.origins.push(origin);
+    }
     if (!existingKeybinding.title && title) {
       existingKeybinding.title = title;
     }
@@ -48,10 +60,24 @@ export function addKeybinding(shortcuts: Shortcuts, { command, key, when, title 
 
 export function normalizeKey(key: string) {
   return key
-    .split('+')
-    .sort()
-    .map((k) => k.trim().toLowerCase())
-    .join('+');
+    .split(' ')
+    .map((k) =>
+      k
+        .split('+')
+        .map((k) => k.trim().toLowerCase())
+        .sort((a, b) => {
+          const specialKeys = ['ctrl', 'shift', 'alt', 'cmd', 'meta', 'win'];
+          if (specialKeys.includes(a) && !specialKeys.includes(b)) {
+            return -1;
+          }
+          if (specialKeys.includes(b) && !specialKeys.includes(a)) {
+            return 1;
+          }
+          return a.localeCompare(b);
+        })
+        .join('+'),
+    )
+    .join(' ');
 }
 
 export function removeKeybinding(keybindings: Shortcuts, { command, key, when }: ShortcutImport) {
@@ -88,7 +114,15 @@ export async function loadKeybindingsFromDefault(context: vscode.ExtensionContex
       .split('.')
       .at(-1)!
       .replace(/([A-Z])/g, ' $1');
-    addKeybinding(shortcuts, { ...keybinding, title });
+    addKeybinding(
+      shortcuts,
+      {
+        ...keybinding,
+        title: title.charAt(0).toUpperCase() + title.slice(1),
+        origin: 'default',
+      },
+      context.globalState.get('importantKeybindings') ?? [],
+    );
   });
   context.globalState.update('shortcuts', shortcuts);
 }
@@ -131,7 +165,11 @@ export async function loadKeybindingsFromExtensions(context: vscode.ExtensionCon
         const command = ((e.packageJSON.contributes?.commands ?? []) as ShortcutImport[]).find(
           (c) => c.command === keybinding.command,
         );
-        addKeybinding(shortcuts, { ...keybinding, title: command?.title });
+        addKeybinding(
+          shortcuts,
+          { ...keybinding, title: command?.title, origin: e.id },
+          context.globalState.get('importantKeybindings') ?? [],
+        );
       });
   });
   context.globalState.update('shortcuts', shortcuts);
@@ -145,7 +183,11 @@ export async function loadKeybindingsFromConfiguration(context: vscode.Extension
     if (keybinding.command.startsWith('-')) {
       removeKeybinding(shortcuts, keybinding);
     } else {
-      addKeybinding(shortcuts, keybinding);
+      addKeybinding(
+        shortcuts,
+        { ...keybinding, origin: 'user' },
+        context.globalState.get('importantKeybindings') ?? [],
+      );
     }
   }
   context.globalState.update('shortcuts', shortcuts);
