@@ -4,129 +4,603 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Shortcut Quiz</title>
+    <style>
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell,
+          'Open Sans', 'Helvetica Neue', sans-serif;
+        color: var(--vscode-foreground);
+        background-color: var(--vscode-editor-background);
+        padding: 20px;
+        max-width: 800px;
+        margin: 0 auto;
+        height: calc(100vh - 40px);
+      }
+
+      #app {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .flex-spacer {
+        flex: 1 1 auto;
+      }
+
+      .question {
+        font-size: 1.2em;
+        /* margin-bottom: 20px; */
+      }
+
+      .keyboard-hint {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex-wrap: wrap;
+        margin-top: 5px;
+      }
+
+      .key {
+        background: var(--vscode-button-background);
+        color: var(--vscode-button-foreground);
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-family: monospace;
+        display: inline-block;
+      }
+
+      .answer {
+        font-size: 20px;
+        margin-top: 20px;
+        padding: 15px;
+        border-left: 4px solid var(--vscode-activityBarBadge-background);
+        background-color: var(--vscode-editor-inactiveSelectionBackground);
+      }
+
+      /* button {
+        background: var(--vscode-button-background);
+        color: var(--vscode-button-foreground);
+        border: none;
+        padding: 8px 12px;
+        cursor: pointer;
+        margin-right: 10px;
+        margin-top: 10px;
+      } */
+
+      /* button:hover {
+        background: var(--vscode-button-hoverBackground);
+      } */
+
+      .progress {
+        margin-bottom: 20px;
+        font-size: 0.9em;
+        color: var(--vscode-descriptionForeground);
+      }
+
+      .feedback {
+        margin-top: 15px;
+        height: 20px;
+        animation: fade-in 0.3s ease-in-out forwards;
+        /* opacity: 1; */
+        /* transition: opacity 10s ease-in-out, transform 10s ease-in-out; */
+        /* transition: opacity 10s ease-in-out; */
+      }
+
+      .feedback.incorrect {
+        /* animation: fade-in 10s ease-in-out forwards; */
+        animation: fadeInOut 6s ease-in-out forwards;
+      }
+
+      /* .feedback.fade-out {
+        opacity: 0;
+        transform: translateY(-10px);
+        height: 0;
+        margin-top: 0;
+      } */
+
+      @keyframes fade-in {
+        from {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes fadeInOut {
+        0% {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+        5% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+        95% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+        100% {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+      }
+
+      .correct {
+        color: var(--vscode-testing-iconPassed);
+      }
+
+      .incorrect {
+        color: var(--vscode-testing-iconFailed);
+      }
+
+      .completion {
+        text-align: center;
+        margin-top: 30px;
+      }
+
+      .keyboard-key {
+        display: inline-block;
+        padding: 2px 6px;
+        margin: 0 2px;
+        /* font-family: 'Courier New', monospace; */
+        font-family: Arial, sans-serif;
+        font-size: 0.9em;
+        font-weight: bold;
+        color: #2c2c2c;
+        background-color: #c0c0c0;
+        border: none;
+        border-top: 5px solid #e0e0e0;
+        border-left: 5px solid #e0e0e0;
+        border-bottom: 5px solid #808080;
+        border-right: 5px solid #808080;
+        border-radius: 2px;
+        box-shadow: 2.5px 2.5px 5px rgba(0, 0, 0, 1);
+        text-shadow: 1px 1px 1px rgba(255, 255, 255, 0.3);
+        user-select: none;
+        cursor: default;
+        /* transition: all 0.1s ease; */
+        /* font-size: 40px; */
+      }
+
+      .keyboard-key:hover,
+      .keyboard-key.active {
+        transform: translate(2px, 2px);
+        border-top: 4px solid #e0e0e0;
+        border-left: 4px solid #e0e0e0;
+        border-bottom: 4px solid #808080;
+        border-right: 4px solid #808080;
+        margin: 1px 3px;
+        box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+      }
+    </style>
   </head>
 
   <body>
+    <!-- <span class="keyboard-key">A</span> -->
+    <div id="app"></div>
+
     <script type="module">
       import { h, render, Component } from 'https://esm.sh/preact';
       import htm from 'https://esm.sh/htm';
+
       const html = htm.bind(h);
       const vscode = acquireVsCodeApi();
 
-      let keybindings = [];
-      function init(shortcuts) {
-        keybindings = shortcuts;
+      // Store state in vscode state storage
+      // const previousState = vscode.getState() || { scores: {} };
+      let keyMappings = {};
+      let configKeyboardLanguage = 'en';
 
-        function getStepsFromKeybinding(keybinding) {
+      class KeybindingQuiz extends Component {
+        constructor(props) {
+          super(props);
+          this.state = {
+            keybindings: [],
+            currentIndex: 0,
+            currentStep: [],
+            currentSteps: [],
+            showAnswer: false,
+            feedback: null,
+            isComplete: false,
+            isFadingOut: false,
+            pressedKeys: [],
+            // scores: previousState.scores,
+          };
+          this.feedbackTimer = null;
+          this.fadeOutTimer = null;
+          this.previousFeedbackKey = 0;
+        }
+
+        componentDidMount() {
+          window.addEventListener('message', this.handleMessage);
+          document.addEventListener('keydown', this.handleKeydown);
+          document.addEventListener('keyup', this.handleKeyup);
+          vscode.postMessage({ command: 'ready' });
+        }
+
+        componentWillUnmount() {
+          window.removeEventListener('message', this.handleMessage);
+          document.removeEventListener('keydown', this.handleKeydown);
+          document.removeEventListener('keyup', this.handleKeyup);
+          if (this.feedbackTimer) {
+            clearTimeout(this.feedbackTimer);
+          }
+          if (this.fadeOutTimer) {
+            clearTimeout(this.fadeOutTimer);
+          }
+        }
+
+        handleMessage = (event) => {
+          const message = event.data;
+          if (message.command === 'setKeybindings') {
+            configKeyboardLanguage = message.configKeyboardLanguage || 'en';
+            keyMappings = message.keyMappings || {};
+            console.log('Received keybindings', message.keybindings);
+            this.initializeKeybindings(message.keybindings);
+            window.focus();
+          }
+        };
+
+        translateVSCodeKey = (vsCodeKey) => {
+          const key = vsCodeKey.toLowerCase();
+          return (keyMappings[key]?.keyCode || vsCodeKey).toLowerCase();
+        };
+
+        initializeKeybindings = (keybindings) => {
+          if (!keybindings || !keybindings.length) return;
+
+          const currentSteps = this.getStepsFromKeybindings(keybindings[0]);
+
+          console.log('Current steps:', currentSteps);
+          this.setState({
+            keybindings,
+            currentSteps,
+            currentStep: currentSteps.map((_) => 0),
+          });
+        };
+
+        getStepsFromKeybindings = (keybinding) => {
+          if (!keybinding || !keybinding.keys.length) return [];
+
           const steps = [];
-          for (const step of keybinding.key.split(' ')) {
-            const keys = step.toLowerCase().split('+');
-            steps.push(keys);
+          for (const k of keybinding.keys) {
+            const step = [];
+            for (const keymatch of k.split(' ')) {
+              // Split by + to handle key combinations
+              const vsCodeKeys = keymatch.toLowerCase().split('+');
+              step.push({
+                displayKeys: keyMappings[vsCodeKeys[vsCodeKeys.length - 1]]?.displayKeys,
+                key: this.translateVSCodeKey(vsCodeKeys[vsCodeKeys.length - 1]),
+                modifiers: vsCodeKeys
+                  .slice(0, vsCodeKeys.length - 1)
+                  .map((k) => this.translateVSCodeKey(k)),
+              });
+            }
+            steps.push(step);
           }
           return steps;
+        };
+
+        getKeyAndKeyCode(event) {
+          let key = event.key.toLowerCase();
+          let keyCode = event.code.toLowerCase();
+          if (keyCode.startsWith('key') && !/[a-z]/.test(key)) {
+            keyCode = keyCode.replace('key', '');
+          }
+          if (keyCode.startsWith('numpad')) {
+            key = null;
+          }
+          return { key, keyCode };
         }
 
-        // Create your app
-        // const app = h('h1', null, 'Hello World!');
-        class MyComponent extends Component {
-          constructor(props) {
-            super(props);
-            this.state = {
-              currentKeybindingIndex: 0,
-              steps: getStepsFromKeybinding(props.keybindings[0]),
-              currentStep: 0,
-            };
-            console.log(this.state);
-          }
-          componentDidMount() {
-            document.addEventListener('keydown', (event) => {
-              console.log(event.key);
-              const step = this.state.steps[this.state.currentStep];
-              console.log(this.state.steps);
-              console.log(this.state.currentStep);
-              console.log(step);
-              const pressedKey = event.key.toLowerCase();
-              if (
-                (!step.includes('ctrl') || event.ctrlKey) &&
-                (!step.includes('shift') || event.shiftKey) &&
-                (!step.includes('alt') || event.altKey) &&
-                (!step.includes('meta') || event.metaKey) &&
-                !['ctrl', 'shift', 'alt', 'meta'].includes(pressedKey) &&
-                step.includes(pressedKey)
-              ) {
-                event.preventDefault(); // Prevent VS Code from handling it
-                event.stopPropagation(); // Stop propagation to parent elements
-                if (this.state.currentStep === this.state.steps.length - 1) {
-                  // Show a message in the Webview
-                  // vscode.postMessage({
-                  //   command: 'alert',
-                  //   text: 'You pressed the correct key combination!',
-                  // });
-                  // document.getElementById('answer').style.display = 'block';
-                  this.showAnswer(true);
-                } else {
-                  this.setState((prev) => ({ currentStep: prev.currentStep + 1 }));
-                }
-              } else {
-                this.setState((prev) => ({ currentStep: 0 }));
-              }
+        handleKeyup = (event) => {
+          console.debug('Keyup event:', event);
+          const { pressedKeys } = this.state;
+          const keyPair = this.getKeyAndKeyCode(event);
+          const keyIndex = pressedKeys.findIndex(
+            (k) => k.key === keyPair.key && k.keyCode === keyPair.keyCode,
+          );
+          if (keyIndex >= 0) {
+            pressedKeys.splice(keyIndex, 1);
+            this.setState({ pressedKeys }, () => {
+              console.debug('Pressed keys:', structuredClone(this.state.pressedKeys));
             });
           }
-          showAnswer(correct) {
-            document.getElementById('answer').style.display = 'block';
-            document.getElementById('next').style.display = 'block';
-            vscode.postMessage({
-              command: 'keybindingAnswer',
-              correct,
-              keybindingCommand: this.props.keybindings[this.state.currentKeybindingIndex].command,
-            });
-          }
-          next() {
-            document.getElementById('answer').style.display = 'none';
-            document.getElementById('next').style.display = 'none';
-            this.setState((prev) => ({
-              currentKeybindingIndex: prev.currentKeybindingIndex + 1,
-              steps: getStepsFromKeybinding(
-                this.props.keybindings[prev.currentKeybindingIndex + 1],
-              ),
-              currentStep: 0,
-            }));
-            // if (currentKeybindingIndex === keybindings.length) {
-            // TODO
-            // }
-          }
-          render(props, state) {
-            // return html`<div>
-            //   ${keybindings.map(({ key, title }) => html`<h1>Key: ${key}, Title: ${title}</h1>`)}
-            // </div>`;
-            return html`<p>
-                What is the shortcut for "${props.keybindings[state.currentKeybindingIndex].title}"?
-                (${props.keybindings[state.currentKeybindingIndex].key})
-              </p>
-              <p>Press the key combination or show the answer if you forgot:</p>
-              <button onClick="${() => this.showAnswer(false)}">Show Answer</button>
-              <p id="answer" style="display: none">
-                The shortcut for "${props.keybindings[state.currentKeybindingIndex].title}" is
-                <strong id="keyAnswer">
-                  ${' ' + props.keybindings[state.currentKeybindingIndex].key}</strong
-                >
-              </p>
-              <button id="next" style="display: none" onClick="${() => this.next()}">Next</button>`;
-          }
-        }
-        // const app = html`<MyComponent name="World" />`;
-        // const app = html`<MyComponent2 name="World" />`;
-        const app = h(MyComponent, { keybindings });
+        };
 
-        render(app, document.body);
+        handleKeydown = async (event) => {
+          console.debug('Keydown event:', event);
+          const { currentStep, currentSteps, showAnswer, pressedKeys } = this.state;
+          const { key: pressedKey, keyCode: pressedKeyCode } = this.getKeyAndKeyCode(event);
+          console.debug('Pressed key, code:', pressedKey, pressedKeyCode);
+          if (!pressedKeys.some((k) => k.key === pressedKey && k.keyCode === pressedKeyCode)) {
+            this.setState(
+              {
+                pressedKeys: [...pressedKeys, { key: pressedKey, keyCode: pressedKeyCode }],
+              },
+              () => {
+                console.debug('Pressed keys:', structuredClone(this.state.pressedKeys));
+              },
+            );
+          }
+
+          // If answer is already showing, don't process keypresses
+          if (showAnswer) {
+            if (
+              event.key === 'Enter' &&
+              event.ctrlKey &&
+              !event.shiftKey &&
+              !event.altKey &&
+              !event.metaKey
+            ) {
+              event.preventDefault();
+              event.stopPropagation();
+              this.handleNext();
+            }
+            return;
+          }
+
+          const steps = currentSteps.map((s, i) => s[currentStep[i]]);
+          console.debug('Steps:', steps);
+          if (!steps.length) return;
+          if (['control', 'shift', 'alt', 'meta'].includes(pressedKey)) {
+            return;
+          }
+          let correctSteps = steps.map((_) => false);
+          for (const [i, step] of steps.entries()) {
+            const { key, modifiers } = step;
+
+            console.debug('Expected key:', key);
+            console.debug('Expected modifiers:', modifiers);
+
+            // Check if the pressed key matches the current step
+            if (
+              modifiers.includes('control') === event.ctrlKey &&
+              modifiers.includes('shift') === event.shiftKey &&
+              modifiers.includes('alt') === event.altKey &&
+              modifiers.includes('meta') === event.metaKey &&
+              [pressedKey, pressedKeyCode].includes(key)
+            ) {
+              correctSteps[i] = true;
+            }
+          }
+          const newCurrentStep = currentStep.map((s, i) => (correctSteps[i] ? s + 1 : 0));
+          if (correctSteps.some((s) => s)) {
+            event.preventDefault();
+            event.stopPropagation();
+            if (newCurrentStep.some((s, i) => s >= currentSteps[i].length)) {
+              // Correct sequence completed
+              this.handleCorrectAnswer();
+            } else {
+              // Move to next step in the sequence
+              this.setState({
+                currentStep: newCurrentStep,
+                feedback: { type: 'progress', text: 'Keep going...' },
+              });
+            }
+          } else {
+            if (this.feedbackTimer) {
+              clearTimeout(this.feedbackTimer);
+            }
+            if (this.fadeOutTimer) {
+              clearTimeout(this.fadeOutTimer);
+            }
+            // Reset on incorrect key
+            this.setState({
+              currentStep: newCurrentStep,
+              feedback: { type: 'incorrect', text: 'Incorrect key, try again' },
+              feedbackKey: this.state.feedbackKey + 1, // Increment key to force re-render
+              // isFadingOut: false,
+            });
+          }
+        };
+
+        handleCorrectAnswer = () => {
+          // const { keybindings, currentIndex, scores } = this.state;
+          const { keybindings, currentIndex } = this.state;
+          const current = keybindings[currentIndex];
+
+          // Update score for this keybinding
+          // const updatedScores = { ...scores };
+          // updatedScores[current.command] = (updatedScores[current.command] || 0) + 1;
+
+          this.setState({
+            showAnswer: true,
+            feedback: { type: 'correct', text: 'Correct! Well done.' },
+            // scores: updatedScores,
+          });
+
+          // Send message to extension
+          vscode.postMessage({
+            command: 'keybindingAnswer',
+            correct: true,
+            keybindingCommand: current.command,
+          });
+
+          // Save state to vscode storage
+          // vscode.setState({ scores: updatedScores });
+        };
+
+        handleShowAnswer = () => {
+          const { keybindings, currentIndex, scores } = this.state;
+          const current = keybindings[currentIndex];
+
+          // Update score for this keybinding (negative)
+          // const updatedScores = { ...scores };
+          // updatedScores[current.command] = (updatedScores[current.command] || 0) - 1;
+
+          this.setState({
+            showAnswer: true,
+            // scores: updatedScores,
+          });
+
+          // Send message to extension
+          vscode.postMessage({
+            command: 'keybindingAnswer',
+            correct: false,
+            keybindingCommand: current.command,
+          });
+
+          // Save state to vscode storage
+          // vscode.setState({ scores: updatedScores });
+        };
+
+        handleNext = () => {
+          const { keybindings, currentIndex } = this.state;
+          const nextIndex = currentIndex + 1;
+
+          if (nextIndex >= keybindings.length) {
+            // Quiz complete
+            this.setState({ isComplete: true });
+            return;
+          }
+
+          const nextSteps = this.getStepsFromKeybindings(keybindings[nextIndex]);
+
+          this.setState({
+            currentIndex: nextIndex,
+            currentSteps: nextSteps,
+            currentStep: nextSteps.map((_) => 0),
+            showAnswer: false,
+            feedback: null,
+          });
+        };
+
+        handleRestart = () => {
+          const { keybindings } = this.state;
+          const firstSteps = this.getStepsFromKeybindings(keybindings[0]);
+
+          this.setState({
+            currentIndex: 0,
+            currentSteps: firstSteps,
+            currentStep: firstSteps.map((_) => 0),
+            showAnswer: false,
+            feedback: null,
+            isComplete: false,
+          });
+        };
+
+        renderKeyboardHint = () => {
+          const { currentSteps, pressedKeys } = this.state;
+
+          if (!currentSteps || currentSteps.length === 0) return null;
+
+          return html`
+            <ul>
+              ${currentSteps.map(
+                (s) => html`
+                  <li>
+                    <div class="keyboard-hint">
+                      ${s.map(
+                        (step, stepIndex) =>
+                          html`${step.modifiers.map(
+                              (key) =>
+                                html`<span
+                                    class="keyboard-key ${pressedKeys.find(
+                                      (k) => k.key === key || k.keyCode === key,
+                                    )
+                                      ? 'active'
+                                      : ''}"
+                                    >${key}</span
+                                  >+`,
+                            )}
+                            <span
+                              class="keyboard-key ${pressedKeys.find(
+                                (k) => k.key === step.key || k.keyCode === step.key,
+                              )
+                                ? 'active'
+                                : ''}"
+                              >${step.displayKeys?.[configKeyboardLanguage] ?? step.key}</span
+                            >
+                            ${stepIndex < s.length - 1 ? ' then ' : ''}`,
+                      )}
+                    </div>
+                  </li>
+                `,
+              )}
+            </ul>
+          `;
+        };
+
+        renderFeedback = () => {
+          const { feedback, feedbackKey } = this.state;
+
+          if (!feedback) return null;
+          // if (feedbackKey === this.previousFeedbackKey) {
+          //   return null;
+          // }
+          // this.previousFeedbackKey = feedbackKey;
+
+          // if (feedback.type === 'incorrect') {
+          //   return html`
+          //     <div key=${feedbackKey} class="feedback incorrect">${feedback.text}</div>
+          //   `;
+          // }
+          if (feedback.type === 'incorrect') {
+            return html`
+              <div key=${feedbackKey} class="feedback ${feedback.type}">${feedback.text}</div>
+            `;
+          }
+          return html` <div class="feedback ${feedback.type}">${feedback.text}</div> `;
+        };
+
+        render() {
+          const { keybindings, currentIndex, showAnswer, isComplete } = this.state;
+
+          if (keybindings.length === 0) {
+            return html`<div>Loading...</div>`;
+          }
+
+          if (isComplete) {
+            return html`
+              <div class="completion">
+                <h2>Quiz Complete!</h2>
+                <p>You've finished the keyboard shortcuts quiz.</p>
+                <button class="keyboard-key" onClick=${this.handleRestart}>Start Over</button>
+              </div>
+            `;
+          }
+
+          const current = keybindings[currentIndex];
+
+          return html`
+            <div class="progress">Question ${currentIndex + 1}/${keybindings.length}</div>
+
+            <div class="question">
+              What is the shortcut for "${current.title}" (${current.command})?
+            </div>
+
+            ${this.renderFeedback()}
+            ${showAnswer &&
+            html`
+              <div class="answer">
+                The shortcuts for "${current.title}" are ${this.renderKeyboardHint()}
+              </div>
+            `}
+            <div class="flex-spacer"></div>
+            <div style="display: flex; justify-content: flex-end;">
+              ${!showAnswer &&
+              html`<button
+                class="keyboard-key"
+                onClick=${this.handleShowAnswer}
+                disabled=${showAnswer}
+              >
+                Give Up (Show Answer)
+              </button> `}
+              ${showAnswer &&
+              html`<button class="keyboard-key" onClick=${this.handleNext}>
+                Next Question (Ctrl+Enter)
+              </button> `}
+            </div>
+          `;
+        }
       }
-      window.addEventListener('message', (event) => {
-        const message = event.data; // The JSON data our extension sent
-        if (message.command === 'setKeybindings') {
-          init(message.keybindings);
-        }
-      });
+
+      // Render the app
+      render(h(KeybindingQuiz, {}), document.getElementById('app'));
     </script>
-    <!-- <h1>Shortcut Quiz</h1> -->
   </body>
 </html>

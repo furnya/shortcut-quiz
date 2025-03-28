@@ -99,8 +99,11 @@ export function removeKeybinding(keybindings: Shortcuts, { command, key, when }:
   }
 }
 
-export async function loadKeybindingsFromDefault(context: vscode.ExtensionContext) {
-  const shortcuts: Shortcuts = {};
+export async function loadKeybindingsFromDefault(
+  context: vscode.ExtensionContext,
+  shortcuts: Shortcuts,
+) {
+  // const shortcuts: Shortcuts = {};
   const defaultKeybindingsPath = path.join(
     context.extensionPath,
     'src',
@@ -129,7 +132,7 @@ export async function loadKeybindingsFromDefault(context: vscode.ExtensionContex
 
 async function getKeybindingsJson(): Promise<string> {
   try {
-    const keybindingsUri = await getKeybindingsFileUri();
+    const keybindingsUri = getKeybindingsFileUri();
     const fileContent = await vscode.workspace.fs.readFile(keybindingsUri);
     return Buffer.from(fileContent).toString('utf8');
   } catch (error) {
@@ -139,12 +142,15 @@ async function getKeybindingsJson(): Promise<string> {
   }
 }
 
-async function getKeybindingsFileUri(): Promise<vscode.Uri> {
+export function getKeybindingsFileUri(onlyFolder: boolean = false): vscode.Uri {
   // Different OS paths for keybindings.json
   const homedir = require('os').homedir();
   let keybindingsPath;
 
-  const defaultPathEnd = ['Code', 'User', 'keybindings.json'];
+  let defaultPathEnd = ['Code', 'User', 'keybindings.json'];
+  if (onlyFolder) {
+    defaultPathEnd = defaultPathEnd.slice(0, -1);
+  }
   if (process.platform === 'win32') {
     keybindingsPath = path.join(homedir, 'AppData', 'Roaming', ...defaultPathEnd);
   } else if (process.platform === 'darwin') {
@@ -156,8 +162,11 @@ async function getKeybindingsFileUri(): Promise<vscode.Uri> {
   return vscode.Uri.file(keybindingsPath);
 }
 
-export async function loadKeybindingsFromExtensions(context: vscode.ExtensionContext) {
-  const shortcuts = context.globalState.get<Shortcuts>('shortcuts') ?? {};
+export async function loadKeybindingsFromExtensions(
+  context: vscode.ExtensionContext,
+  shortcuts: Shortcuts,
+) {
+  // const shortcuts = context.globalState.get<Shortcuts>('shortcuts') ?? {};
   vscode.extensions.all.forEach((e) => {
     ((e.packageJSON.contributes?.keybindings ?? []) as ShortcutImport[])
       .filter((kb) => kb.key)
@@ -175,8 +184,11 @@ export async function loadKeybindingsFromExtensions(context: vscode.ExtensionCon
   context.globalState.update('shortcuts', shortcuts);
 }
 
-export async function loadKeybindingsFromConfiguration(context: vscode.ExtensionContext) {
-  const shortcuts = context.globalState.get<Shortcuts>('shortcuts') ?? {};
+export async function loadKeybindingsFromConfiguration(
+  context: vscode.ExtensionContext,
+  shortcuts: Shortcuts,
+) {
+  // const shortcuts = context.globalState.get<Shortcuts>('shortcuts') ?? {};
   const fileContent = await getKeybindingsJson();
   const userKeybindings = JSON.parse(fileContent.toString()) as ShortcutImport[];
   for (const keybinding of userKeybindings) {

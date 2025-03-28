@@ -1,30 +1,128 @@
 {
-    "down": "ArrowDown",
-    "up": "ArrowUp",
-    "left": "ArrowLeft",
-    "right": "ArrowRight",
-    "space": " ",
-    "plus": "+",
-    "minus": "-",
-    "win": "Meta",
-    "cmd": "Meta",
-    "pausebreak": "Pause",
-    "numpad_multiply": "NumpadMultiply",
-    "numpad_add": "NumpadAdd",
-    "numpad_separator": "NumpadDecimal",
-    "numpad_subtract": "NumpadSubtract",
-    "numpad_decimal": "NumpadDecimal",
-    "numpad_divide": "NumpadDivide",
-    "oem_5": "backquote",
-    "oem_4": "ß",
-    "oem_6": "equal",
-    "oem_1": "ü",
-    "oem_plus": "+",
-    "oem_3": "ö",
-    "oem_7": "ä",
-    "oem_2": "#",
-    "oem_comma": ",",
-    "oem_period": ".",
-    "oem_minus": "-",
-    "oem_102": "<"
+    "ctrl": {
+        "keyCode": "Control"
+    },
+    "down": {
+        "keyCode": "ArrowDown"
+    },
+    "up": {
+        "keyCode": "ArrowUp"
+    },
+    "left": {
+        "keyCode": "ArrowLeft"
+    },
+    "right": {
+        "keyCode": "ArrowRight"
+    },
+    "win": {
+        "keyCode": "Meta"
+    },
+    "cmd": {
+        "keyCode": "Meta"
+    },
+    "pausebreak": {
+        "keyCode": "Pause"
+    },
+    "numpad_multiply": {
+        "keyCode": "NumpadMultiply"
+    },
+    "numpad_add": {
+        "keyCode": "NumpadAdd"
+    },
+    "numpad_separator": {
+        "keyCode": "NumpadDecimal"
+    },
+    "numpad_subtract": {
+        "keyCode": "NumpadSubtract"
+    },
+    "numpad_decimal": {
+        "keyCode": "NumpadDecimal"
+    },
+    "numpad_divide": {
+        "keyCode": "NumpadDivide"
+    },
+    "oem_5": {
+        "keyCode": "backquote",
+        "displayKeys": {
+            "de": "^",
+            "en": "`"
+        }
+    },
+    "oem_4": {
+        "keyCode": "minus",
+        "displayKeys": {
+            "de": "ß",
+            "en": "-"
+        }
+    },
+    "oem_6": {
+        "keyCode": "equal",
+        "displayKeys": {
+            "de": "´",
+            "en": "="
+        }
+    },
+    "oem_1": {
+        "keyCode": "bracketleft",
+        "displayKeys": {
+            "de": "ü",
+            "en": "["
+        }
+    },
+    "oem_plus": {
+        "keyCode": "bracketright",
+        "displayKeys": {
+            "de": "+",
+            "en": "]"
+        }
+    },
+    "oem_3": {
+        "keyCode": "semicolon",
+        "displayKeys": {
+            "de": "ö",
+            "en": ";"
+        }
+    },
+    "oem_7": {
+        "keyCode": "quote",
+        "displayKeys": {
+            "de": "ä",
+            "en": "'"
+        }
+    },
+    "oem_2": {
+        "keyCode": "backslash",
+        "displayKeys": {
+            "de": "#",
+            "en": "\\"
+        }
+    },
+    "oem_comma": {
+        "keyCode": "comma",
+        "displayKeys": {
+            "de": ",",
+            "en": ","
+        }
+    },
+    "oem_period": {
+        "keyCode": "period",
+        "displayKeys": {
+            "de": ".",
+            "en": "."
+        }
+    },
+    "oem_minus": {
+        "keyCode": "slash",
+        "displayKeys": {
+            "de": "-",
+            "en": "/"
+        }
+    },
+    "oem_102": {
+        "keyCode": "intlbackslash",
+        "displayKeys": {
+            "de": "<",
+            "en": "\\"
+        }
+    }
 }

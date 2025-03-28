@@ -4,11 +4,14 @@
 import * as fsAsync from 'fs/promises';
 import * as path from 'path';
 import * as vscode from 'vscode';
+// eslint-disable-next-line @typescript-eslint/naming-convention
+import _ from 'lodash';
 import {
   loadKeybindingsFromDefault,
   loadKeybindingsFromConfiguration,
   loadKeybindingsFromExtensions,
   Shortcuts,
+  getKeybindingsFileUri,
 } from './shortcuts';
 
 // This method is called when your extension is activated
@@ -29,42 +32,58 @@ export async function activate(context: vscode.ExtensionContext) {
 
   const keybindingsChangeListener = vscode.workspace.onDidChangeConfiguration(async (e) => {
     console.log('Config has changed');
-    await loadKeybindingsFromConfiguration(context);
+    // await loadKeybindingsFromConfiguration(context);
+    await reloadAllKeybindings();
   });
+
+  const userKeybindingsWatcher = vscode.workspace.createFileSystemWatcher(
+    new vscode.RelativePattern(getKeybindingsFileUri(true).fsPath, 'keybindings.json'),
+    false, // ignoreCreateEvents
+    false, // ignoreChangeEvents
+    false, // ignoreDeleteEvents
+  );
+  userKeybindingsWatcher.onDidChange(async (e) => {
+    console.log('Keybindings have changed');
+    console.log(e);
+    // await loadKeybindingsFromConfiguration(context);
+    await reloadAllKeybindings();
+  });
+
+  async function reloadAllKeybindings() {
+    const timeLabel = 'loadKeybindings_' + new Date().toISOString();
+    console.time(timeLabel);
+    const shortcuts = context.globalState.get<Shortcuts>('shortcuts') ?? {};
+    for (const command in shortcuts) {
+      shortcuts[command].keys = {};
+    }
+    await loadKeybindingsFromDefault(context, shortcuts);
+    await loadKeybindingsFromExtensions(context, shortcuts);
+    await loadKeybindingsFromConfiguration(context, shortcuts);
+    console.timeEnd(timeLabel);
+  }
 
   // Listen for extension changes
   const extensionChangeListener = vscode.extensions.onDidChange(() => {
     console.log('Extensions have changed (installed/uninstalled)');
-    setTimeout(() => loadKeybindingsFromExtensions(context), 10000);
+    // setTimeout(() => loadKeybindingsFromExtensions(context), 10000);
+    setTimeout(() => reloadAllKeybindings(), 10000);
   });
 
   const activateCommand = vscode.commands.registerCommand('shortcut-quiz.activate', async () => {
     // context.globalState.update('shortcuts', {});
     // if (true) {
-    if (!context.globalState.get('shortcuts')) {
-      vscode.window.showInformationMessage('Loading shortcuts...');
-      await loadKeybindingsFromDefault(context);
-      await loadKeybindingsFromExtensions(context);
-      await loadKeybindingsFromConfiguration(context);
-      vscode.window.showInformationMessage('Shortcuts loaded');
-    }
+    // if (!context.globalState.get('shortcuts')) {
+    //   vscode.window.showInformationMessage('Loading shortcuts...');
+    //   await reloadAllKeybindings();
+    //   vscode.window.showInformationMessage('Shortcuts loaded');
+    // }
+    await reloadAllKeybindings();
 
-    const shortcuts = context.globalState.get<Shortcuts>('shortcuts') ?? {};
-    const testShortcut: any = Object.values(shortcuts)[0];
-    await openHtmlEditor(
-      context,
-      // testShortcut.title,
-      // Object.keys(testShortcut.keys)[0]
-      undefined,
-      undefined,
-      // [{ title: testShortcut.title, key: Object.keys(testShortcut.keys)[0] }],
-      Object.entries(shortcuts)
-        .filter(([k, s]) => s.important)
-        // .slice(0, 10)
-        .slice(10, 20)
-        .map(([k, s]) => ({ title: s.title, keys: Object.keys(s.keys), command: k })),
-    );
-    // setInterval(async () => checkAndShowEditor(context), 5000);
+    vscode.commands.executeCommand('shortcut-quiz.startNewQuiz');
+    // checkAndShowEditor(context);
+    // const quizInterval = setInterval(async () => checkAndShowEditor(context), 30 * 1000);
+    const quizInterval = setInterval(async () => checkAndShowEditor(context), 0.5 * 1000);
+    context.globalState.update('quizInterval', quizInterval);
   });
   const inspectGlobalStateCommand = vscode.commands.registerCommand(
     'shortcut-quiz.inspectGlobalState',
@@ -79,51 +98,74 @@ export async function activate(context: vscode.ExtensionContext) {
       channel.show();
     },
   );
+
+  const startNewQuizCommand = vscode.commands.registerCommand(
+    'shortcut-quiz.startNewQuiz',
+    async () => {
+      const shortcuts = context.globalState.get<Shortcuts>('shortcuts') ?? {};
+      let selection = Object.entries(shortcuts).filter(([k, s]) => s.important);
+      _.shuffle(selection);
+      // TODO choose shortcuts with lowest learning state
+      // selection = selection.sort((a, b) => a[1].learningState - b[1].learningState);
+      selection = _.sortBy(selection, (s) => s[1].learningState);
+      // selection = _.sampleSize(selection, 10);
+      selection = selection.slice(0, 10);
+      // selection = [
+      //   'workbench.action.exitZenMode',
+      //   'editor.action.outdentLines',
+      //   'workbench.action.closeActiveEditor',
+      //   'breadcrumbs.focus',
+      // ].map((k) => [k, shortcuts[k]]);
+      await openHtmlEditor(
+        context,
+        selection.map(([k, s]) => ({ title: s.title, keys: Object.keys(s.keys), command: k })),
+      );
+    },
+  );
+
   context.subscriptions.push(
     activateCommand,
     inspectGlobalStateCommand,
     keybindingsChangeListener,
     extensionChangeListener,
+    startNewQuizCommand,
+    userKeybindingsWatcher,
   );
   vscode.commands.executeCommand('shortcut-quiz.activate');
 }
 
 // This method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() {
+  clearInterval(vscode.workspace.getConfiguration('shortcutQuiz').get('quizInterval'));
+}
 
-async function openHtmlEditor(
-  context: vscode.ExtensionContext,
-  title: string = `Opening the Command Palette`,
-  key: string = 'Ctrl+Shift+P',
-  keybindings: any[] = [],
-  // key: string = 'Escape Escape'
-) {
+async function openHtmlEditor(context: vscode.ExtensionContext, keybindings: any[] = []) {
   const panel = vscode.window.createWebviewPanel(
-    'customHtmlView',
-    'Custom HTML View',
+    'shortcutQuiz',
+    'Shortcut Quiz',
     vscode.ViewColumn.One,
-    { enableScripts: true },
+    { enableScripts: true, retainContextWhenHidden: true },
   );
 
-  // Load HTML skeleton from file
-  // const htmlFilePath = path.join(context.extensionPath, 'src', 'quiz_editor.html');
-  const htmlFilePath = path.join(context.extensionPath, 'src', 'quiz_editor2.html');
-  // let htmlContent = fs.readFileSync(htmlFilePath, 'utf8');
+  const htmlFilePath = path.join(context.extensionPath, 'src', 'quiz_editor.html');
   let htmlContent = await fsAsync.readFile(htmlFilePath, 'utf8');
 
-  // Inject custom content
-  // htmlContent = htmlContent.replaceAll('{{TITLE}}', title);
-  // htmlContent = htmlContent.replaceAll('{{KEY}}', key);
-
   const keyMappingsPath = path.join(context.extensionPath, 'src', 'key_mappings.json');
-  // const keyMappingsJson = fs.readFileSync(keyMappingsPath, 'utf8');
   const keyMappingsJson = await fsAsync.readFile(keyMappingsPath, 'utf8');
   const keyMappings = JSON.parse(keyMappingsJson);
-  // console.log(keyMappings);
 
-  // Set the panel content
   panel.webview.html = htmlContent;
-  panel.webview.postMessage({ command: 'setKeybindings', keybindings, keyMappings });
+  function sendStartMessage() {
+    panel.webview.postMessage({
+      command: 'setKeybindings',
+      keybindings,
+      keyMappings,
+      configKeyboardLanguage: vscode.workspace
+        .getConfiguration('shortcutQuiz')
+        .get('keyboardLayout'),
+    });
+  }
+  // sendStartMessage();
   panel.webview.onDidReceiveMessage((message) => {
     if (message.command === 'keybindingAnswer') {
       const shortcuts = context.globalState.get<Shortcuts>('shortcuts') ?? {};
@@ -131,23 +173,23 @@ async function openHtmlEditor(
       shortcut.learningState = shortcut.learningState + (message.correct ? 1 : -1);
       context.globalState.update('shortcuts', shortcuts);
     } else if (message.command === 'ready') {
-      // panel.webview.postMessage({ command: 'setKeybindings', keybindings, keyMappings });
+      sendStartMessage();
     }
   });
 }
 
-const INTERVAL_MS = 100 * 1000; // 10 seconds
-
 async function checkAndShowEditor(context: vscode.ExtensionContext) {
   if (vscode.window.state.focused && (await shouldShowEditor(context))) {
-    await openHtmlEditor(context);
+    vscode.commands.executeCommand('shortcut-quiz.startNewQuiz');
     await updateLastShownTimestamp(context);
   }
 }
 
 async function shouldShowEditor(context: vscode.ExtensionContext): Promise<boolean> {
   const lastShown = context.globalState.get<number>('lastShownTimestamp') || 0;
-  const nextShowTime = lastShown + INTERVAL_MS;
+  const nextShowTime =
+    lastShown +
+    vscode.workspace.getConfiguration('shortcutQuiz').get('quizInterval', 60) * 1000 * 60;
   return Date.now() > nextShowTime;
 }
 
