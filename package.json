@@ -2,8 +2,9 @@
   "name": "shortcut-quiz",
   "displayName": "Shortcut Quiz",
   "publisher": "furnya",
+  "icon": "assets/extension_icon.png",
   "description": "Periodic quizzes of common keyboard shortcuts & more",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "engines": {
     "vscode": "^1.98.0"
   },
@@ -15,18 +16,129 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "shortcutQuizActivityContainer",
+          "title": "Shortcut Quiz",
+          "icon": "assets/tree_view_icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "shortcutQuizActivityContainer": [
+        {
+          "id": "shortcutQuizShortcutTreeViewActive",
+          "name": "Shortcuts Active for Quiz"
+        },
+        {
+          "id": "shortcutQuizShortcutTreeViewInactive",
+          "name": "Shortcuts Inactive for Quiz"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "shortcut-quiz.refreshActiveTreeView",
+          "when": "view == shortcutQuizShortcutTreeViewActive",
+          "group": "navigation"
+        },
+        {
+          "command": "shortcut-quiz.refreshInactiveTreeView",
+          "when": "view == shortcutQuizShortcutTreeViewInactive",
+          "group": "navigation"
+        },
+        {
+          "command": "shortcut-quiz.sortActiveTreeAlphabetically",
+          "when": "view == shortcutQuizShortcutTreeViewActive",
+          "group": "navigation"
+        },
+        {
+          "command": "shortcut-quiz.sortInactiveTreeAlphabetically",
+          "when": "view == shortcutQuizShortcutTreeViewInactive",
+          "group": "navigation"
+        },
+        {
+          "command": "shortcut-quiz.sortActiveTreeByScore",
+          "when": "view == shortcutQuizShortcutTreeViewActive",
+          "group": "navigation"
+        },
+        {
+          "command": "shortcut-quiz.sortInactiveTreeByScore",
+          "when": "view == shortcutQuizShortcutTreeViewInactive",
+          "group": "navigation"
+        },
+        {
+          "command": "shortcut-quiz.startNewQuiz",
+          "when": "view == shortcutQuizShortcutTreeViewActive",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "shortcut-quiz.unstarCommand",
+          "when": "view == shortcutQuizShortcutTreeViewActive && viewItem == command",
+          "group": "inline"
+        },
+        {
+          "command": "shortcut-quiz.starCommand",
+          "when": "view == shortcutQuizShortcutTreeViewInactive && viewItem == command",
+          "group": "inline"
+        }
+      ]
+    },
     "commands": [
       {
-        "command": "shortcut-quiz.activate",
-        "title": "Activate Shortcut Quiz"
-      },
-      {
-        "command": "shortcut-quiz.inspectGlobalState",
-        "title": "Shortcut Quiz: Inspect Global State"
-      },
-      {
         "command": "shortcut-quiz.startNewQuiz",
-        "title": "Start New Shortcut Quiz"
+        "title": "Start New Shortcut Quiz",
+        "icon": "assets/new_quiz.svg"
+      },
+      {
+        "command": "shortcut-quiz.starCommand",
+        "title": "Activate Command for Shortcut Quiz",
+        "icon": "assets/star.svg"
+      },
+      {
+        "command": "shortcut-quiz.unstarCommand",
+        "title": "Deactivate Command for Shortcut Quiz",
+        "icon": "assets/star_strikethrough.svg"
+      },
+      {
+        "command": "shortcut-quiz.sortActiveTreeAlphabetically",
+        "title": "Sort Shortcuts Alphabetically",
+        "icon": "assets/sort_alphabet.svg"
+      },
+      {
+        "command": "shortcut-quiz.sortInactiveTreeAlphabetically",
+        "title": "Sort Shortcuts Alphabetically",
+        "icon": "assets/sort_alphabet.svg"
+      },
+      {
+        "command": "shortcut-quiz.sortActiveTreeByScore",
+        "title": "Sort Shortcuts By Score",
+        "icon": "assets/sort_score.svg"
+      },
+      {
+        "command": "shortcut-quiz.sortInactiveTreeByScore",
+        "title": "Sort Shortcuts By Score",
+        "icon": "assets/sort_score.svg"
+      },
+      {
+        "command": "shortcut-quiz.refreshActiveTreeView",
+        "title": "Refresh Active Shortcuts",
+        "icon": {
+          "light": "assets/light/refresh.svg",
+          "dark": "assets/dark/refresh.svg"
+        }
+      },
+      {
+        "command": "shortcut-quiz.refreshInactiveTreeView",
+        "title": "Refresh Inactive Shortcuts",
+        "icon": {
+          "light": "assets/light/refresh.svg",
+          "dark": "assets/dark/refresh.svg"
+        }
       }
     ],
     "configuration": {

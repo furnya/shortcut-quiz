@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Five-pointed star -->
+  <path
+    d="M100 10 L120 80 L190 80 L135 125 L155 195 L100 155 L45 195 L65 125 L10 80 L80 80 Z"
+    rx="3"
+    ry="3"
+    fill="none"
+    stroke="rgb(208,208,208)"
+    stroke-width="15"
+    stroke-linejoin="round"
+  />
+  <line
+    x1="20"
+    y1="20"
+    x2="180"
+    y2="180"
+    stroke="rgb(208,208,208)"
+    stroke-width="20"
+    stroke-linecap="round"
+  />
+</svg>

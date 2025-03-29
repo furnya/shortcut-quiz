@@ -10,14 +10,16 @@ export interface ShortcutImport {
   origin?: string;
 }
 
+export interface Shortcut {
+  title: string;
+  keys: { [key: string]: string[] | null };
+  learningState: number;
+  origins: string[];
+  important: boolean;
+}
+
 export interface Shortcuts {
-  [command: string]: {
-    title?: string;
-    keys: { [key: string]: string[] | null };
-    learningState: number;
-    origins: string[];
-    important: boolean;
-  };
+  [command: string]: Shortcut;
 }
 
 export function addKeybinding(
@@ -27,8 +29,21 @@ export function addKeybinding(
 ) {
   const normalizedKey = normalizeKey(key);
   if (!shortcuts[command]) {
+    let finalTitle = title;
+    if (!finalTitle) {
+      finalTitle =
+        command
+          .split('.')
+          .at(-1)!
+          .replace(/([A-Z])/g, ' $1') || command;
+      finalTitle = finalTitle.charAt(0).toUpperCase() + finalTitle.slice(1);
+    }
+    if (command === 'gitlens.key.alt+.') {
+      console.log('gitlens.key.alt+.', { command, key, when, title, origin });
+      console.log(finalTitle);
+    }
     shortcuts[command] = {
-      title: title,
+      title: finalTitle.trim(),
       keys: {
         [normalizeKey(normalizedKey)]: when ? [when] : null,
       },
@@ -40,9 +55,6 @@ export function addKeybinding(
     const existingKeybinding = shortcuts[command];
     if (origin && !existingKeybinding.origins.includes(origin)) {
       existingKeybinding.origins.push(origin);
-    }
-    if (!existingKeybinding.title && title) {
-      existingKeybinding.title = title;
     }
     if (!existingKeybinding.keys[normalizedKey]) {
       existingKeybinding.keys[normalizedKey] = when ? [when] : null;
@@ -113,15 +125,10 @@ export async function loadKeybindingsFromDefault(
   const defaultKeybindings: { command: string; key: string; when?: string }[] =
     JSON.parse(defaultKeybindingsContent);
   defaultKeybindings.forEach((keybinding) => {
-    const title = keybinding.command
-      .split('.')
-      .at(-1)!
-      .replace(/([A-Z])/g, ' $1');
     addKeybinding(
       shortcuts,
       {
         ...keybinding,
-        title: title.charAt(0).toUpperCase() + title.slice(1),
         origin: 'default',
       },
       context.globalState.get('importantKeybindings') ?? [],

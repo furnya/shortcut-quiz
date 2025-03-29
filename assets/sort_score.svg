@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1"
+    width="800" height="800" viewBox="0 0 800 800" xml:space="preserve">
+    <!-- Draw the letter A -->
+    <text x="50" y="650" font-size="700" font-family="Arial" fill="rgb(208,208,208)">#</text>
+
+    <!-- Define an arrow marker -->
+    <defs>
+        <marker id="arrow" markerWidth="10" markerHeight="10" refX="0" refY="3" orient="auto"
+            markerUnits="strokeWidth">
+            <path d="M0,0 L0,6 L5,3 z" fill="rgb(208,208,208)" />
+        </marker>
+    </defs>
+
+    <!-- Draw the arrow line with the marker at the end -->
+    <line x1="650" y1="650" x2="650" y2="290" stroke="rgb(208,208,208)" stroke-width="30"
+        marker-end="url(#arrow)" stroke-linejoin="round" />
+    <rect x="0" y="0" width="100%" height="100%" fill="transparent"></rect>
+
+</svg>

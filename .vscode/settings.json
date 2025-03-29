@@ -13,5 +13,6 @@
   "eslint.validate": ["javascript", "typescript"],
   "eslint.format.enable": false,
   "prettier.enable": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode"
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "svg.preview.background": "dark-transparent"
 }

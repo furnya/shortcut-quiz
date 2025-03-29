@@ -1,101 +1,48 @@
 # Shortcut Quiz
 
-Shortcut Quiz is a web-based application designed to help users learn and practice keyboard shortcuts interactively. It is particularly useful for developers and power users who want to improve their productivity by mastering keybindings.
+Shortcut Quiz is a Visual Studio Code extension designed to help users learn and practice keyboard shortcuts interactively. It is particularly useful for developers and power users who want to improve their productivity by mastering keybindings.
 
 ## Features
 
-- Interactive quiz to test your knowledge of keyboard shortcuts.
+- Interactive quiz to test your knowledge of Visual Studio Code keyboard shortcuts.
 - Real-time feedback on correct and incorrect key presses.
-- Support for multi-step keybinding sequences.
-- Visual hints for keyboard shortcuts.
-- Progress tracking and completion summary.
+- Support for multi-step keybinding sequences (e.g., `Ctrl+K Ctrl+C`).
+- Visual hints for keyboard shortcuts, including modifiers like `Ctrl`, `Shift`, `Alt`, and `Meta`.
+- Integration with Visual Studio Code's keybinding data, ensuring up-to-date shortcuts.
 
 ## How It Works
 
-1. The application displays a question asking for the shortcut of a specific command.
-2. Users can type the shortcut using their keyboard.
-3. The app provides feedback on whether the input is correct or incorrect.
-4. Users can reveal the correct answer or proceed to the next question.
+The Shortcut Quiz extension is designed to help users master Visual Studio Code shortcuts through periodic quizzes. Here's how it works:
 
-## Getting Started
+- **Periodic Quizzes**:
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/your-username/shortcut-quiz.git
-   ```
-2. Open the `src/quiz_editor2.html` file in a modern web browser.
-3. Follow the on-screen instructions to start the quiz.
+  - The extension periodically opens a quiz to challenge users with questions about Visual Studio Code shortcuts.
+  - The interval between quizzes can be customized through the extension settings, allowing users to control how often they are prompted.
 
-## Development
+- **Dynamic Shortcut Selection**:
 
-This project uses [Preact](https://preactjs.com/) for rendering and is designed to integrate with Visual Studio Code extensions. To modify or extend the functionality:
+  - Shortcuts are selected dynamically based on a scoring system.
+  - Each shortcut has a score that increases when the user answers correctly and decreases when the user answers incorrectly.
+  - This ensures that shortcuts the user struggles to remember are prioritized in future quizzes, helping users focus on improving their weakest areas.
 
-1. Edit the `src/quiz_editor2.html` file.
-2. Use the browser's developer tools to debug and test changes.
-3. Reload the file in the browser to see updates.
+- **Interactive Learning**:
 
-## Contributing
+  - Users receive real-time feedback on their answers, helping them learn and retain the correct shortcuts more effectively.
+  - The extension supports multi-step keybinding sequences (e.g., `Ctrl+K Ctrl+C`), ensuring comprehensive coverage of Visual Studio Code shortcuts.
 
-Contributions are welcome! Feel free to submit issues or pull requests to improve the project.
+- **Personalized Experience**:
+  - By focusing on shortcuts that users find challenging, the extension provides a tailored learning experience.
+  - Over time, users can track their progress and see improvements in their shortcut mastery.
 
-## License
-
-This project is licensed under the MIT License. See the `LICENSE` file for details.
+This approach ensures that users not only learn new shortcuts but also reinforce the ones they find most difficult, leading to better productivity and confidence in using Visual Studio Code.
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+- Visual Studio Code version 1.98.0 or higher.
 
 ## Extension Settings
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
 This extension contributes the following settings:
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
-
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+- `shortcutQuiz.keyboardLayout`: The keyboard layout to use for keybinding matching. Default is `en`.
+- `shortcutQuiz.quizInterval`: The interval (in minutes) between quizzes. Default is `60`.
