@@ -1,6 +1,3 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
-// import * as fs from 'fs';
 import * as fsAsync from 'fs/promises';
 import * as path from 'path';
 import * as vscode from 'vscode';
@@ -12,18 +9,16 @@ import {
   loadKeybindingsFromExtensions,
   Shortcuts,
   getKeybindingsFileUri,
-  Shortcut,
 } from './shortcuts';
+import { getDisposables as getTreeViewDisposables, KeybindingTreeItem } from './tree_view';
 
 let quizInterval: NodeJS.Timeout | null = null;
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
 export async function activate(context: vscode.ExtensionContext) {
-  // Use the console to output diagnostic information (console.log) and errors (console.error)
-  // This line of code will only be executed once when your extension is activated
-  console.log('Congratulations, your extension "shortcut-quiz" is now active!');
+  console.log('The extension "shortcut-quiz" is now active!');
 
+  // TODO group commands by category
+  // TODO group commands by similarity (arrowup/arrowdown commands can be combined)
   const importantKeybindingsPath = path.join(
     context.extensionPath,
     'src',
@@ -48,7 +43,6 @@ export async function activate(context: vscode.ExtensionContext) {
   userKeybindingsWatcher.onDidChange(async (e) => {
     console.log('Keybindings have changed');
     console.log(e);
-    // await loadKeybindingsFromConfiguration(context);
     await reloadAllKeybindings();
   });
 
@@ -65,137 +59,9 @@ export async function activate(context: vscode.ExtensionContext) {
     console.timeEnd(timeLabel);
   }
 
-  // Listen for extension changes
   const extensionChangeListener = vscode.extensions.onDidChange(() => {
     console.log('Extensions have changed (installed/uninstalled)');
-    // setTimeout(() => loadKeybindingsFromExtensions(context), 10000);
     setTimeout(() => reloadAllKeybindings(), 10000);
-  });
-
-  class KeybindingTreeItem extends vscode.TreeItem {
-    public readonly children: KeybindingTreeItem[] = [];
-    public readonly commandString: string;
-    constructor(
-      public readonly key: string,
-      public readonly value: any,
-      public readonly isKeybinding: boolean = false,
-      public readonly parent: KeybindingTreeItem | null = null,
-      public readonly collapseCommand: boolean = false,
-    ) {
-      let label = isKeybinding ? key : key.charAt(0).toUpperCase() + key.slice(1);
-      if (key === 'learningState') {
-        label = 'Score';
-      }
-      let collapsibleState = vscode.TreeItemCollapsibleState.Expanded;
-      if (typeof value !== 'object' || value === null) {
-        label += `: ${value}`;
-        collapsibleState = vscode.TreeItemCollapsibleState.None;
-      }
-      super(label, collapsibleState);
-      if (!parent) {
-        this.contextValue = 'command';
-        this.label = value.title ?? key;
-        this.description = key;
-        if (collapseCommand) {
-          this.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
-        }
-      }
-      if (key === 'origins') {
-        this.label = `Origins: ${value.join(', ')}`;
-        this.children = [];
-        this.collapsibleState = vscode.TreeItemCollapsibleState.None;
-      }
-      this.commandString = key;
-      this.parent = parent;
-      if (this.isKeybinding) {
-        this.iconPath = vscode.Uri.file(path.join(context.extensionPath, 'assets', 'keyboard.svg'));
-        this.label = key;
-        this.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
-        if (value === null) {
-          this.collapsibleState = vscode.TreeItemCollapsibleState.None;
-        }
-      } else if (this.parent?.isKeybinding) {
-        this.iconPath = vscode.Uri.file(
-          path.join(context.extensionPath, 'assets', 'question_mark.svg'),
-        );
-        this.label = value;
-      }
-      if (typeof value === 'object' && value !== null && key !== 'origins') {
-        this.children = [];
-        if (!this.parent) {
-          this.children.push(
-            ...Object.entries(value.keys).map(([k, v]) => new KeybindingTreeItem(k, v, true, this)),
-          );
-        }
-        this.children.push(
-          ...Object.entries(value)
-            .filter(([k, v]) => !['title', 'important', 'keys'].includes(k))
-            .map(([k, v]) => {
-              return new KeybindingTreeItem(k, v, false, this);
-            }),
-        );
-      }
-    }
-  }
-
-  abstract class ShortcutTreeDataProvider implements vscode.TreeDataProvider<KeybindingTreeItem> {
-    private _onDidChangeTreeData: vscode.EventEmitter<KeybindingTreeItem | undefined> =
-      new vscode.EventEmitter<KeybindingTreeItem | undefined>();
-    readonly onDidChangeTreeData: vscode.Event<KeybindingTreeItem | undefined> =
-      this._onDidChangeTreeData.event;
-    sortOrder: 'alphabetical' | 'learningState' = 'alphabetical';
-    protected abstract filterCondition(shortcut: Shortcut): boolean;
-    protected abstract collapseCommand: boolean;
-    refresh() {
-      this._onDidChangeTreeData.fire(undefined);
-    }
-
-    getTreeItem(element: KeybindingTreeItem): vscode.TreeItem {
-      return element;
-    }
-
-    getChildren(element?: KeybindingTreeItem): KeybindingTreeItem[] {
-      const shortcuts = context.globalState.get<Shortcuts>('shortcuts') ?? {};
-      if (!element) {
-        return Object.entries(shortcuts)
-          .filter(([key, value]) => this.filterCondition(shortcuts[key]))
-          .toSorted(([keyA, valueA], [keyB, valueB]) => {
-            if (this.sortOrder === 'learningState') {
-              return valueA.learningState - valueB.learningState;
-            } else if (this.sortOrder === 'alphabetical') {
-              return valueA.title.localeCompare(valueB.title);
-            }
-            return keyA.localeCompare(keyB);
-          })
-          .map(
-            ([key, value]) => new KeybindingTreeItem(key, value, false, null, this.collapseCommand),
-          );
-      }
-      return element.children;
-    }
-  }
-  class ShortcutInactiveTreeDataProvider extends ShortcutTreeDataProvider {
-    protected filterCondition(shortcut: Shortcut): boolean {
-      return !shortcut.important;
-    }
-    protected collapseCommand = true;
-  }
-  class ShortcutActiveTreeDataProvider extends ShortcutTreeDataProvider {
-    protected filterCondition(shortcut: Shortcut): boolean {
-      return shortcut.important;
-    }
-    protected collapseCommand = false;
-  }
-
-  const shortcutActiveTreeDataProvider = new ShortcutActiveTreeDataProvider();
-  vscode.window.createTreeView('shortcutQuizShortcutTreeViewActive', {
-    treeDataProvider: shortcutActiveTreeDataProvider,
-    showCollapseAll: true,
-  });
-  const shortcutInactiveTreeDataProvider = new ShortcutInactiveTreeDataProvider();
-  vscode.window.createTreeView('shortcutQuizShortcutTreeViewInactive', {
-    treeDataProvider: shortcutInactiveTreeDataProvider,
-    showCollapseAll: true,
   });
 
   const starCommandCommand = vscode.commands.registerCommand(
@@ -207,8 +73,6 @@ export async function activate(context: vscode.ExtensionContext) {
         await context.globalState.update('shortcuts', shortcuts);
         vscode.commands.executeCommand('shortcut-quiz.refreshActiveTreeView');
         vscode.commands.executeCommand('shortcut-quiz.refreshInactiveTreeView');
-        // shortcutActiveTreeDataProvider.refresh();
-        // shortcutInactiveTreeDataProvider.refresh();
       }
     },
   );
@@ -221,50 +85,7 @@ export async function activate(context: vscode.ExtensionContext) {
         await context.globalState.update('shortcuts', shortcuts);
         vscode.commands.executeCommand('shortcut-quiz.refreshActiveTreeView');
         vscode.commands.executeCommand('shortcut-quiz.refreshInactiveTreeView');
-        // shortcutActiveTreeDataProvider.refresh();
-        // shortcutInactiveTreeDataProvider.refresh();
       }
-    },
-  );
-
-  const refreshActiveTreeCommand = vscode.commands.registerCommand(
-    'shortcut-quiz.refreshActiveTreeView',
-    async () => {
-      shortcutActiveTreeDataProvider.refresh();
-    },
-  );
-  const refreshInactiveTreeCommand = vscode.commands.registerCommand(
-    'shortcut-quiz.refreshInactiveTreeView',
-    async () => {
-      shortcutInactiveTreeDataProvider.refresh();
-    },
-  );
-  const sortActiveTreeAlphabeticallyCommand = vscode.commands.registerCommand(
-    'shortcut-quiz.sortActiveTreeAlphabetically',
-    async () => {
-      shortcutActiveTreeDataProvider.sortOrder = 'alphabetical';
-      shortcutActiveTreeDataProvider.refresh();
-    },
-  );
-  const sortActiveTreeByScoreCommand = vscode.commands.registerCommand(
-    'shortcut-quiz.sortActiveTreeByScore',
-    async () => {
-      shortcutActiveTreeDataProvider.sortOrder = 'learningState';
-      shortcutActiveTreeDataProvider.refresh();
-    },
-  );
-  const sortInactiveTreeAlphabeticallyCommand = vscode.commands.registerCommand(
-    'shortcut-quiz.sortInactiveTreeAlphabetically',
-    async () => {
-      shortcutInactiveTreeDataProvider.sortOrder = 'alphabetical';
-      shortcutInactiveTreeDataProvider.refresh();
-    },
-  );
-  const sortInactiveTreeByScoreCommand = vscode.commands.registerCommand(
-    'shortcut-quiz.sortInactiveTreeByScore',
-    async () => {
-      shortcutInactiveTreeDataProvider.sortOrder = 'learningState';
-      shortcutInactiveTreeDataProvider.refresh();
     },
   );
 
@@ -274,7 +95,6 @@ export async function activate(context: vscode.ExtensionContext) {
       const shortcuts = context.globalState.get<Shortcuts>('shortcuts') ?? {};
       let selection = Object.entries(shortcuts).filter(([k, s]) => s.important);
       _.shuffle(selection);
-      // TODO choose shortcuts with lowest learning state
       // selection = selection.sort((a, b) => a[1].learningState - b[1].learningState);
       selection = _.sortBy(selection, (s) => s[1].learningState);
       // selection = _.sampleSize(selection, 10);
@@ -292,19 +112,15 @@ export async function activate(context: vscode.ExtensionContext) {
     },
   );
 
+  const treeViewDisposables = getTreeViewDisposables(context);
+
   context.subscriptions.push(
     keybindingsChangeListener,
     extensionChangeListener,
     startNewQuizCommand,
     starCommandCommand,
     unstarCommandCommand,
-    refreshActiveTreeCommand,
-    refreshInactiveTreeCommand,
     userKeybindingsWatcher,
-    sortActiveTreeAlphabeticallyCommand,
-    sortActiveTreeByScoreCommand,
-    sortInactiveTreeAlphabeticallyCommand,
-    sortInactiveTreeByScoreCommand,
     {
       dispose: () => {
         if (quizInterval) {
@@ -313,6 +129,7 @@ export async function activate(context: vscode.ExtensionContext) {
         }
       },
     },
+    ...treeViewDisposables,
   );
   // context.globalState.update('shortcuts', {});
   await reloadAllKeybindings();
