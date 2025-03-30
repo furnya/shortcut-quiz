@@ -73,16 +73,16 @@ export async function activate(context: vscode.ExtensionContext) {
   });
 
   class KeybindingTreeItem extends vscode.TreeItem {
-    public readonly isKeybinding: boolean;
     public readonly children: KeybindingTreeItem[] = [];
     public readonly commandString: string;
     constructor(
       public readonly key: string,
       public readonly value: any,
+      public readonly isKeybinding: boolean = false,
       public readonly parent: KeybindingTreeItem | null = null,
       public readonly collapseCommand: boolean = false,
     ) {
-      let label = parent?.label === 'Keys' ? key : key.charAt(0).toUpperCase() + key.slice(1);
+      let label = isKeybinding ? key : key.charAt(0).toUpperCase() + key.slice(1);
       if (key === 'learningState') {
         label = 'Score';
       }
@@ -106,11 +106,14 @@ export async function activate(context: vscode.ExtensionContext) {
         this.collapsibleState = vscode.TreeItemCollapsibleState.None;
       }
       this.commandString = key;
-      this.isKeybinding = parent?.label === 'Keys';
       this.parent = parent;
       if (this.isKeybinding) {
         this.iconPath = vscode.Uri.file(path.join(context.extensionPath, 'assets', 'keyboard.svg'));
+        this.label = key;
         this.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
+        if (value === null) {
+          this.collapsibleState = vscode.TreeItemCollapsibleState.None;
+        }
       } else if (this.parent?.isKeybinding) {
         this.iconPath = vscode.Uri.file(
           path.join(context.extensionPath, 'assets', 'question_mark.svg'),
@@ -118,11 +121,19 @@ export async function activate(context: vscode.ExtensionContext) {
         this.label = value;
       }
       if (typeof value === 'object' && value !== null && key !== 'origins') {
-        this.children = Object.entries(value)
-          .filter(([k, v]) => !['title'].includes(k))
-          .map(([k, v]) => {
-            return new KeybindingTreeItem(k, v, this);
-          });
+        this.children = [];
+        if (!this.parent) {
+          this.children.push(
+            ...Object.entries(value.keys).map(([k, v]) => new KeybindingTreeItem(k, v, true, this)),
+          );
+        }
+        this.children.push(
+          ...Object.entries(value)
+            .filter(([k, v]) => !['title', 'important', 'keys'].includes(k))
+            .map(([k, v]) => {
+              return new KeybindingTreeItem(k, v, false, this);
+            }),
+        );
       }
     }
   }
@@ -156,7 +167,9 @@ export async function activate(context: vscode.ExtensionContext) {
             }
             return keyA.localeCompare(keyB);
           })
-          .map(([key, value]) => new KeybindingTreeItem(key, value, null, this.collapseCommand));
+          .map(
+            ([key, value]) => new KeybindingTreeItem(key, value, false, null, this.collapseCommand),
+          );
       }
       return element.children;
     }
