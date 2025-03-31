@@ -1,14 +1,14 @@
 # Shortcut Quiz
 
-Shortcut Quiz is a Visual Studio Code extension designed to help users learn and practice keyboard shortcuts interactively. It is particularly useful for developers and power users who want to improve their productivity by mastering keybindings.
+Shortcut Quiz is a Visual Studio Code extension designed to help users learn and practice keyboard shortcuts interactively. It is particularly useful for developers and power users who want to improve their productivity by mastering shortcuts.
 
 ## Features
 
 - Interactive quiz to test your knowledge of Visual Studio Code keyboard shortcuts.
 - Real-time feedback on correct and incorrect key presses.
-- Support for multi-step keybinding sequences (e.g., `Ctrl+K Ctrl+C`).
+- Support for multi-step shortcut sequences (e.g., `Ctrl+K Ctrl+C`).
 - Visual hints for keyboard shortcuts, including modifiers like `Ctrl`, `Shift`, `Alt`, and `Meta`.
-- Integration with Visual Studio Code's keybinding data, ensuring up-to-date shortcuts.
+- Integration with Visual Studio Code's shortcut data, ensuring up-to-date shortcuts.
 
 ## How It Works
 
@@ -28,7 +28,7 @@ The Shortcut Quiz extension is designed to help users master Visual Studio Code 
 - **Interactive Learning**:
 
   - Users receive real-time feedback on their answers, helping them learn and retain the correct shortcuts more effectively.
-  - The extension supports multi-step keybinding sequences (e.g., `Ctrl+K Ctrl+C`), ensuring comprehensive coverage of Visual Studio Code shortcuts.
+  - The extension supports multi-step shortcut sequences (e.g., `Ctrl+K Ctrl+C`), ensuring comprehensive coverage of Visual Studio Code shortcuts.
 
 - **Personalized Experience**:
   - By focusing on shortcuts that users find challenging, the extension provides a tailored learning experience.
@@ -44,5 +44,5 @@ This approach ensures that users not only learn new shortcuts but also reinforce
 
 This extension contributes the following settings:
 
-- `shortcutQuiz.keyboardLayout`: The keyboard layout to use for keybinding matching. Default is `en`.
+- `shortcutQuiz.keyboardLayout`: The keyboard layout to use for shortcut matching. Default is `en`.
 - `shortcutQuiz.quizInterval`: The interval (in minutes) between quizzes. Default is `60`.

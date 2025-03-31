@@ -2,18 +2,18 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { Shortcut, Shortcuts } from './shortcuts';
 
-export class KeybindingTreeItem extends vscode.TreeItem {
-  public readonly children: KeybindingTreeItem[] = [];
+export class ShortcutTreeItem extends vscode.TreeItem {
+  public readonly children: ShortcutTreeItem[] = [];
   public readonly commandString: string;
   constructor(
     public readonly context: vscode.ExtensionContext,
     public readonly key: string,
     public readonly value: any,
-    public readonly isKeybinding: boolean = false,
-    public readonly parent: KeybindingTreeItem | null = null,
+    public readonly isShortcut: boolean = false,
+    public readonly parent: ShortcutTreeItem | null = null,
     public readonly collapseCommand: boolean = false,
   ) {
-    let label = isKeybinding ? key : key.charAt(0).toUpperCase() + key.slice(1);
+    let label = isShortcut ? key : key.charAt(0).toUpperCase() + key.slice(1);
     if (key === 'learningState') {
       label = 'Score';
     }
@@ -38,14 +38,14 @@ export class KeybindingTreeItem extends vscode.TreeItem {
     }
     this.commandString = key;
     this.parent = parent;
-    if (this.isKeybinding) {
+    if (this.isShortcut) {
       this.iconPath = vscode.Uri.file(path.join(context.extensionPath, 'assets', 'keyboard.svg'));
       this.label = key;
       this.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
       if (value === null) {
         this.collapsibleState = vscode.TreeItemCollapsibleState.None;
       }
-    } else if (this.parent?.isKeybinding) {
+    } else if (this.parent?.isShortcut) {
       this.iconPath = vscode.Uri.file(
         path.join(context.extensionPath, 'assets', 'question_mark.svg'),
       );
@@ -56,7 +56,7 @@ export class KeybindingTreeItem extends vscode.TreeItem {
       if (!this.parent) {
         this.children.push(
           ...Object.entries(value.keys).map(
-            ([k, v]) => new KeybindingTreeItem(context, k, v, true, this),
+            ([k, v]) => new ShortcutTreeItem(context, k, v, true, this),
           ),
         );
       }
@@ -64,18 +64,18 @@ export class KeybindingTreeItem extends vscode.TreeItem {
         ...Object.entries(value)
           .filter(([k, v]) => !['title', 'important', 'keys'].includes(k))
           .map(([k, v]) => {
-            return new KeybindingTreeItem(context, k, v, false, this);
+            return new ShortcutTreeItem(context, k, v, false, this);
           }),
       );
     }
   }
 }
 
-abstract class ShortcutTreeDataProvider implements vscode.TreeDataProvider<KeybindingTreeItem> {
+abstract class ShortcutTreeDataProvider implements vscode.TreeDataProvider<ShortcutTreeItem> {
   constructor(protected readonly context: vscode.ExtensionContext) {}
-  private _onDidChangeTreeData: vscode.EventEmitter<KeybindingTreeItem | undefined> =
-    new vscode.EventEmitter<KeybindingTreeItem | undefined>();
-  readonly onDidChangeTreeData: vscode.Event<KeybindingTreeItem | undefined> =
+  private _onDidChangeTreeData: vscode.EventEmitter<ShortcutTreeItem | undefined> =
+    new vscode.EventEmitter<ShortcutTreeItem | undefined>();
+  readonly onDidChangeTreeData: vscode.Event<ShortcutTreeItem | undefined> =
     this._onDidChangeTreeData.event;
   sortOrder: 'alphabetical' | 'learningState' = 'alphabetical';
   protected abstract filterCondition(shortcut: Shortcut): boolean;
@@ -84,11 +84,11 @@ abstract class ShortcutTreeDataProvider implements vscode.TreeDataProvider<Keybi
     this._onDidChangeTreeData.fire(undefined);
   }
 
-  getTreeItem(element: KeybindingTreeItem): vscode.TreeItem {
+  getTreeItem(element: ShortcutTreeItem): vscode.TreeItem {
     return element;
   }
 
-  getChildren(element?: KeybindingTreeItem): KeybindingTreeItem[] {
+  getChildren(element?: ShortcutTreeItem): ShortcutTreeItem[] {
     const shortcuts = this.context.globalState.get<Shortcuts>('shortcuts') ?? {};
     if (!element) {
       return Object.entries(shortcuts)
@@ -103,7 +103,7 @@ abstract class ShortcutTreeDataProvider implements vscode.TreeDataProvider<Keybi
         })
         .map(
           ([key, value]) =>
-            new KeybindingTreeItem(this.context, key, value, false, null, this.collapseCommand),
+            new ShortcutTreeItem(this.context, key, value, false, null, this.collapseCommand),
         );
     }
     return element.children;

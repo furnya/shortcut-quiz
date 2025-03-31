@@ -2,6 +2,8 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as vscode from 'vscode';
 
+export const importantShortcutsKey = 'importantShortcuts';
+
 export interface ShortcutImport {
   command: string;
   key: string;
@@ -22,10 +24,14 @@ export interface Shortcuts {
   [command: string]: Shortcut;
 }
 
-export function addKeybinding(
+function getImportantShortcuts(context: vscode.ExtensionContext): string[] {
+  return context.globalState.get<string[]>(importantShortcutsKey) ?? [];
+}
+
+export function addShortcut(
   shortcuts: Shortcuts,
   { command, key, when, title, origin }: ShortcutImport,
-  importantKeybindings: string[],
+  importantShortcuts: string[],
 ) {
   const normalizedKey = normalizeKey(key);
   if (!shortcuts[command]) {
@@ -49,22 +55,22 @@ export function addKeybinding(
       },
       learningState: 0,
       origins: origin ? [origin] : [],
-      important: importantKeybindings.includes(command),
+      important: importantShortcuts.includes(command),
     };
   } else {
-    const existingKeybinding = shortcuts[command];
-    if (origin && !existingKeybinding.origins.includes(origin)) {
-      existingKeybinding.origins.push(origin);
+    const existingShortcut = shortcuts[command];
+    if (origin && !existingShortcut.origins.includes(origin)) {
+      existingShortcut.origins.push(origin);
     }
-    if (!existingKeybinding.keys[normalizedKey]) {
-      existingKeybinding.keys[normalizedKey] = when ? [when] : null;
+    if (!existingShortcut.keys[normalizedKey]) {
+      existingShortcut.keys[normalizedKey] = when ? [when] : null;
     } else {
       if (
         when &&
-        existingKeybinding.keys[normalizedKey] &&
-        !existingKeybinding.keys[normalizedKey].includes(when)
+        existingShortcut.keys[normalizedKey] &&
+        !existingShortcut.keys[normalizedKey].includes(when)
       ) {
-        existingKeybinding.keys[normalizedKey].push(when);
+        existingShortcut.keys[normalizedKey].push(when);
       }
     }
   }
@@ -92,84 +98,80 @@ export function normalizeKey(key: string) {
     .join(' ');
 }
 
-export function removeKeybinding(keybindings: Shortcuts, { command, key, when }: ShortcutImport) {
+export function removeShortcut(shortcuts: Shortcuts, { command, key, when }: ShortcutImport) {
   const originalCommand = command.slice(1);
-  if (!keybindings[originalCommand]) {
+  if (!shortcuts[originalCommand]) {
     return;
   }
   const normalizedKey = normalizeKey(key);
-  const existingKeybinding = keybindings[originalCommand];
-  if (!existingKeybinding.keys[normalizedKey]) {
+  const existingShortcut = shortcuts[originalCommand];
+  if (!existingShortcut.keys[normalizedKey]) {
     return;
   }
   if (when) {
-    existingKeybinding.keys[normalizedKey] = existingKeybinding.keys[normalizedKey].filter(
+    existingShortcut.keys[normalizedKey] = existingShortcut.keys[normalizedKey].filter(
       (w: string) => w !== when,
     );
   } else {
-    delete existingKeybinding.keys[normalizedKey];
+    delete existingShortcut.keys[normalizedKey];
   }
 }
 
-export async function loadKeybindingsFromDefault(
+export async function loadShortcutsFromDefault(
   context: vscode.ExtensionContext,
   shortcuts: Shortcuts,
 ) {
   // const shortcuts: Shortcuts = {};
-  const defaultKeybindingsPath = path.join(
-    context.extensionPath,
-    'src',
-    'default_keybindings.json',
-  );
-  const defaultKeybindingsContent = fs.readFileSync(defaultKeybindingsPath, 'utf8');
-  const defaultKeybindings: { command: string; key: string; when?: string }[] =
-    JSON.parse(defaultKeybindingsContent);
-  defaultKeybindings.forEach((keybinding) => {
-    addKeybinding(
+  const defaultShortcutsPath = path.join(context.extensionPath, 'data', 'default_shortcuts.json');
+  const defaultShortcutsContent = fs.readFileSync(defaultShortcutsPath, 'utf8');
+  const defaultShortcuts: { command: string; key: string; when?: string }[] =
+    JSON.parse(defaultShortcutsContent);
+  defaultShortcuts.forEach((shortcut) => {
+    addShortcut(
       shortcuts,
       {
-        ...keybinding,
+        ...shortcut,
         origin: 'default',
       },
-      context.globalState.get('importantKeybindings') ?? [],
+      getImportantShortcuts(context),
     );
   });
   context.globalState.update('shortcuts', shortcuts);
 }
 
-async function getKeybindingsJson(): Promise<string> {
+async function getShortcutsJson(): Promise<string> {
   try {
-    const keybindingsUri = getKeybindingsFileUri();
-    const fileContent = await vscode.workspace.fs.readFile(keybindingsUri);
+    const shortcutsUri = getUserShortcutsFileUri();
+    const fileContent = await vscode.workspace.fs.readFile(shortcutsUri);
     return Buffer.from(fileContent).toString('utf8');
   } catch (error) {
-    console.error('Failed to read keybindings.json:', error);
-    vscode.window.showErrorMessage(`Failed to read keybindings.json: ${error}`);
+    const errorMessage = `Failed to read keybindings.json: ${error}`;
+    console.error(errorMessage);
+    vscode.window.showErrorMessage(errorMessage);
     return '';
   }
 }
 
-export function getKeybindingsFileUri(onlyFolder: boolean = false): vscode.Uri {
-  // Different OS paths for keybindings.json
+export function getUserShortcutsFileUri(onlyFolder: boolean = false): vscode.Uri {
   const homedir = require('os').homedir();
-  let keybindingsPath;
+  let shortcutsPath;
 
   let defaultPathEnd = ['Code', 'User', 'keybindings.json'];
   if (onlyFolder) {
     defaultPathEnd = defaultPathEnd.slice(0, -1);
   }
   if (process.platform === 'win32') {
-    keybindingsPath = path.join(homedir, 'AppData', 'Roaming', ...defaultPathEnd);
+    shortcutsPath = path.join(homedir, 'AppData', 'Roaming', ...defaultPathEnd);
   } else if (process.platform === 'darwin') {
-    keybindingsPath = path.join(homedir, 'Library', 'Application Support', ...defaultPathEnd);
+    shortcutsPath = path.join(homedir, 'Library', 'Application Support', ...defaultPathEnd);
   } else {
-    keybindingsPath = path.join(homedir, '.config', ...defaultPathEnd);
+    shortcutsPath = path.join(homedir, '.config', ...defaultPathEnd);
   }
 
-  return vscode.Uri.file(keybindingsPath);
+  return vscode.Uri.file(shortcutsPath);
 }
 
-export async function loadKeybindingsFromExtensions(
+export async function loadShortcutsFromExtensions(
   context: vscode.ExtensionContext,
   shortcuts: Shortcuts,
 ) {
@@ -177,36 +179,32 @@ export async function loadKeybindingsFromExtensions(
   vscode.extensions.all.forEach((e) => {
     ((e.packageJSON.contributes?.keybindings ?? []) as ShortcutImport[])
       .filter((kb) => kb.key)
-      .forEach((keybinding) => {
+      .forEach((shortcut) => {
         const command = ((e.packageJSON.contributes?.commands ?? []) as ShortcutImport[]).find(
-          (c) => c.command === keybinding.command,
+          (c) => c.command === shortcut.command,
         );
-        addKeybinding(
+        addShortcut(
           shortcuts,
-          { ...keybinding, title: command?.title, origin: e.id },
-          context.globalState.get('importantKeybindings') ?? [],
+          { ...shortcut, title: command?.title, origin: e.id },
+          getImportantShortcuts(context),
         );
       });
   });
   context.globalState.update('shortcuts', shortcuts);
 }
 
-export async function loadKeybindingsFromConfiguration(
+export async function loadShortcutsFromConfiguration(
   context: vscode.ExtensionContext,
   shortcuts: Shortcuts,
 ) {
   // const shortcuts = context.globalState.get<Shortcuts>('shortcuts') ?? {};
-  const fileContent = await getKeybindingsJson();
-  const userKeybindings = JSON.parse(fileContent.toString()) as ShortcutImport[];
-  for (const keybinding of userKeybindings) {
-    if (keybinding.command.startsWith('-')) {
-      removeKeybinding(shortcuts, keybinding);
+  const fileContent = await getShortcutsJson();
+  const userShortcuts = JSON.parse(fileContent.toString()) as ShortcutImport[];
+  for (const shortcut of userShortcuts) {
+    if (shortcut.command.startsWith('-')) {
+      removeShortcut(shortcuts, shortcut);
     } else {
-      addKeybinding(
-        shortcuts,
-        { ...keybinding, origin: 'user' },
-        context.globalState.get('importantKeybindings') ?? [],
-      );
+      addShortcut(shortcuts, { ...shortcut, origin: 'user' }, getImportantShortcuts(context));
     }
   }
   context.globalState.update('shortcuts', shortcuts);

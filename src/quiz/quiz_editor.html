@@ -195,11 +195,11 @@
       let keyMappings = {};
       let configKeyboardLanguage = 'en';
 
-      class KeybindingQuiz extends Component {
+      class ShortcutQuiz extends Component {
         constructor(props) {
           super(props);
           this.state = {
-            keybindings: [],
+            shortcuts: [],
             currentIndex: 0,
             currentStep: [],
             currentSteps: [],
@@ -236,11 +236,11 @@
 
         handleMessage = (event) => {
           const message = event.data;
-          if (message.command === 'setKeybindings') {
+          if (message.command === 'setShortcuts') {
             configKeyboardLanguage = message.configKeyboardLanguage || 'en';
             keyMappings = message.keyMappings || {};
-            console.log('Received keybindings', message.keybindings);
-            this.initializeKeybindings(message.keybindings);
+            console.log('Received shortcuts', message.shortcuts);
+            this.initializeShortcuts(message.shortcuts);
             window.focus();
           }
         };
@@ -250,24 +250,24 @@
           return (keyMappings[key]?.keyCode || vsCodeKey).toLowerCase();
         };
 
-        initializeKeybindings = (keybindings) => {
-          if (!keybindings || !keybindings.length) return;
+        initializeShortcuts = (shortcuts) => {
+          if (!shortcuts || !shortcuts.length) return;
 
-          const currentSteps = this.getStepsFromKeybindings(keybindings[0]);
+          const currentSteps = this.getStepsFromShortcuts(shortcuts[0]);
 
           console.log('Current steps:', currentSteps);
           this.setState({
-            keybindings,
+            shortcuts,
             currentSteps,
             currentStep: currentSteps.map((_) => 0),
           });
         };
 
-        getStepsFromKeybindings = (keybinding) => {
-          if (!keybinding || !keybinding.keys.length) return [];
+        getStepsFromShortcuts = (shortcut) => {
+          if (!shortcut || !shortcut.keys.length) return [];
 
           const steps = [];
-          for (const k of keybinding.keys) {
+          for (const k of shortcut.keys) {
             const step = [];
             for (const keymatch of k.split(' ')) {
               // Split by + to handle key combinations
@@ -400,11 +400,11 @@
         };
 
         handleCorrectAnswer = () => {
-          // const { keybindings, currentIndex, scores } = this.state;
-          const { keybindings, currentIndex } = this.state;
-          const current = keybindings[currentIndex];
+          // const { shortcuts, currentIndex, scores } = this.state;
+          const { shortcuts, currentIndex } = this.state;
+          const current = shortcuts[currentIndex];
 
-          // Update score for this keybinding
+          // Update score for this shortcut
           // const updatedScores = { ...scores };
           // updatedScores[current.command] = (updatedScores[current.command] || 0) + 1;
 
@@ -416,9 +416,9 @@
 
           // Send message to extension
           vscode.postMessage({
-            command: 'keybindingAnswer',
+            command: 'shortcutAnswer',
             correct: true,
-            keybindingCommand: current.command,
+            shortcutCommand: current.command,
           });
 
           // Save state to vscode storage
@@ -426,10 +426,10 @@
         };
 
         handleShowAnswer = () => {
-          const { keybindings, currentIndex, scores } = this.state;
-          const current = keybindings[currentIndex];
+          const { shortcuts, currentIndex, scores } = this.state;
+          const current = shortcuts[currentIndex];
 
-          // Update score for this keybinding (negative)
+          // Update score for this shortcut (negative)
           // const updatedScores = { ...scores };
           // updatedScores[current.command] = (updatedScores[current.command] || 0) - 1;
 
@@ -440,9 +440,9 @@
 
           // Send message to extension
           vscode.postMessage({
-            command: 'keybindingAnswer',
+            command: 'shortcutAnswer',
             correct: false,
-            keybindingCommand: current.command,
+            shortcutCommand: current.command,
           });
 
           // Save state to vscode storage
@@ -450,16 +450,16 @@
         };
 
         handleNext = () => {
-          const { keybindings, currentIndex } = this.state;
+          const { shortcuts, currentIndex } = this.state;
           const nextIndex = currentIndex + 1;
 
-          if (nextIndex >= keybindings.length) {
+          if (nextIndex >= shortcuts.length) {
             // Quiz complete
             this.setState({ isComplete: true });
             return;
           }
 
-          const nextSteps = this.getStepsFromKeybindings(keybindings[nextIndex]);
+          const nextSteps = this.getStepsFromShortcuts(shortcuts[nextIndex]);
 
           this.setState({
             currentIndex: nextIndex,
@@ -471,8 +471,8 @@
         };
 
         handleRestart = () => {
-          const { keybindings } = this.state;
-          const firstSteps = this.getStepsFromKeybindings(keybindings[0]);
+          const { shortcuts } = this.state;
+          const firstSteps = this.getStepsFromShortcuts(shortcuts[0]);
 
           this.setState({
             currentIndex: 0,
@@ -549,9 +549,9 @@
         };
 
         render() {
-          const { keybindings, currentIndex, showAnswer, isComplete } = this.state;
+          const { shortcuts, currentIndex, showAnswer, isComplete } = this.state;
 
-          if (keybindings.length === 0) {
+          if (shortcuts.length === 0) {
             return html`<div>Loading...</div>`;
           }
 
@@ -565,10 +565,10 @@
             `;
           }
 
-          const current = keybindings[currentIndex];
+          const current = shortcuts[currentIndex];
 
           return html`
-            <div class="progress">Question ${currentIndex + 1}/${keybindings.length}</div>
+            <div class="progress">Question ${currentIndex + 1}/${shortcuts.length}</div>
 
             <div class="question">
               What is the shortcut for "${current.title}" (${current.command})?
@@ -601,7 +601,7 @@
       }
 
       // Render the app
-      render(h(KeybindingQuiz, {}), document.getElementById('app'));
+      render(h(ShortcutQuiz, {}), document.getElementById('app'));
     </script>
   </body>
 </html>

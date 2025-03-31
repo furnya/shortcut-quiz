@@ -4,13 +4,14 @@ import * as vscode from 'vscode';
 // eslint-disable-next-line @typescript-eslint/naming-convention
 import _ from 'lodash';
 import {
-  loadKeybindingsFromDefault,
-  loadKeybindingsFromConfiguration,
-  loadKeybindingsFromExtensions,
+  loadShortcutsFromDefault,
+  loadShortcutsFromConfiguration,
+  loadShortcutsFromExtensions,
   Shortcuts,
-  getKeybindingsFileUri,
+  getUserShortcutsFileUri,
+  importantShortcutsKey,
 } from './shortcuts';
-import { getDisposables as getTreeViewDisposables, KeybindingTreeItem } from './tree_view';
+import { getDisposables as getTreeViewDisposables, ShortcutTreeItem } from './tree_view';
 
 let quizInterval: NodeJS.Timeout | null = null;
 
@@ -19,57 +20,56 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // TODO group commands by category
   // TODO group commands by similarity (arrowup/arrowdown commands can be combined)
-  const importantKeybindingsPath = path.join(
+  // TODO titles for defaults
+  const importantShortcutsPath = path.join(
     context.extensionPath,
-    'src',
-    'keybinding_selection.json',
+    'data',
+    'shortcut_selection.json',
   );
-  const importantKeybindingsJson = await fsAsync.readFile(importantKeybindingsPath, 'utf8');
-  const importantKeybindings = JSON.parse(importantKeybindingsJson) as string[];
-  context.globalState.update('importantKeybindings', importantKeybindings);
+  const importantShortcutsJson = await fsAsync.readFile(importantShortcutsPath, 'utf8');
+  const importantShortcuts = JSON.parse(importantShortcutsJson) as string[];
+  context.globalState.update(importantShortcutsKey, importantShortcuts);
 
-  const keybindingsChangeListener = vscode.workspace.onDidChangeConfiguration(async (e) => {
+  const configChangeListener = vscode.workspace.onDidChangeConfiguration(async (e) => {
     console.log('Config has changed');
-    // await loadKeybindingsFromConfiguration(context);
-    await reloadAllKeybindings();
+    await reloadAllShortcuts();
   });
 
-  const userKeybindingsWatcher = vscode.workspace.createFileSystemWatcher(
-    new vscode.RelativePattern(getKeybindingsFileUri(true).fsPath, 'keybindings.json'),
+  const userShortcutsWatcher = vscode.workspace.createFileSystemWatcher(
+    new vscode.RelativePattern(getUserShortcutsFileUri(true).fsPath, 'keybindings.json'),
     false, // ignoreCreateEvents
     false, // ignoreChangeEvents
     false, // ignoreDeleteEvents
   );
-  userKeybindingsWatcher.onDidChange(async (e) => {
-    console.log('Keybindings have changed');
-    console.log(e);
-    await reloadAllKeybindings();
+  userShortcutsWatcher.onDidChange(async () => {
+    console.log('User shortcuts have changed');
+    await reloadAllShortcuts();
   });
 
-  async function reloadAllKeybindings() {
-    const timeLabel = 'loadKeybindings_' + new Date().toISOString();
+  async function reloadAllShortcuts() {
+    const timeLabel = 'loadShortcuts_' + new Date().toISOString();
     console.time(timeLabel);
     const shortcuts = context.globalState.get<Shortcuts>('shortcuts') ?? {};
     for (const command in shortcuts) {
       shortcuts[command].keys = {};
     }
-    await loadKeybindingsFromDefault(context, shortcuts);
-    await loadKeybindingsFromExtensions(context, shortcuts);
-    await loadKeybindingsFromConfiguration(context, shortcuts);
+    await loadShortcutsFromDefault(context, shortcuts);
+    await loadShortcutsFromExtensions(context, shortcuts);
+    await loadShortcutsFromConfiguration(context, shortcuts);
     console.timeEnd(timeLabel);
   }
 
   const extensionChangeListener = vscode.extensions.onDidChange(() => {
     console.log('Extensions have changed (installed/uninstalled)');
-    setTimeout(() => reloadAllKeybindings(), 10000);
+    setTimeout(() => reloadAllShortcuts(), 10000);
   });
 
   const starCommandCommand = vscode.commands.registerCommand(
     'shortcut-quiz.starCommand',
-    async (keybinding: KeybindingTreeItem) => {
+    async (item: ShortcutTreeItem) => {
       const shortcuts = context.globalState.get<Shortcuts>('shortcuts') ?? {};
-      if (shortcuts[keybinding.commandString]) {
-        shortcuts[keybinding.key].important = true;
+      if (shortcuts[item.commandString]) {
+        shortcuts[item.key].important = true;
         await context.globalState.update('shortcuts', shortcuts);
         vscode.commands.executeCommand('shortcut-quiz.refreshActiveTreeView');
         vscode.commands.executeCommand('shortcut-quiz.refreshInactiveTreeView');
@@ -78,10 +78,10 @@ export async function activate(context: vscode.ExtensionContext) {
   );
   const unstarCommandCommand = vscode.commands.registerCommand(
     'shortcut-quiz.unstarCommand',
-    async (keybinding: KeybindingTreeItem) => {
+    async (item: ShortcutTreeItem) => {
       const shortcuts = context.globalState.get<Shortcuts>('shortcuts') ?? {};
-      if (shortcuts[keybinding.commandString]) {
-        shortcuts[keybinding.key].important = false;
+      if (shortcuts[item.commandString]) {
+        shortcuts[item.key].important = false;
         await context.globalState.update('shortcuts', shortcuts);
         vscode.commands.executeCommand('shortcut-quiz.refreshActiveTreeView');
         vscode.commands.executeCommand('shortcut-quiz.refreshInactiveTreeView');
@@ -115,12 +115,12 @@ export async function activate(context: vscode.ExtensionContext) {
   const treeViewDisposables = getTreeViewDisposables(context);
 
   context.subscriptions.push(
-    keybindingsChangeListener,
+    configChangeListener,
     extensionChangeListener,
     startNewQuizCommand,
     starCommandCommand,
     unstarCommandCommand,
-    userKeybindingsWatcher,
+    userShortcutsWatcher,
     {
       dispose: () => {
         if (quizInterval) {
@@ -132,7 +132,7 @@ export async function activate(context: vscode.ExtensionContext) {
     ...treeViewDisposables,
   );
   // context.globalState.update('shortcuts', {});
-  await reloadAllKeybindings();
+  await reloadAllShortcuts();
   quizInterval = setInterval(async () => checkAndShowEditor(context), 30 * 1000);
 }
 
@@ -144,7 +144,7 @@ export function deactivate() {
   }
 }
 
-async function openHtmlEditor(context: vscode.ExtensionContext, keybindings: any[] = []) {
+async function openHtmlEditor(context: vscode.ExtensionContext, shortcuts: any[] = []) {
   const panel = vscode.window.createWebviewPanel(
     'shortcutQuiz',
     'Shortcut Quiz',
@@ -152,18 +152,18 @@ async function openHtmlEditor(context: vscode.ExtensionContext, keybindings: any
     { enableScripts: true, retainContextWhenHidden: true },
   );
 
-  const htmlFilePath = path.join(context.extensionPath, 'src', 'quiz_editor.html');
+  const htmlFilePath = path.join(context.extensionPath, 'src', 'quiz', 'quiz_editor.html');
   let htmlContent = await fsAsync.readFile(htmlFilePath, 'utf8');
 
-  const keyMappingsPath = path.join(context.extensionPath, 'src', 'key_mappings.json');
+  const keyMappingsPath = path.join(context.extensionPath, 'data', 'key_mappings.json');
   const keyMappingsJson = await fsAsync.readFile(keyMappingsPath, 'utf8');
   const keyMappings = JSON.parse(keyMappingsJson);
 
   panel.webview.html = htmlContent;
   function sendStartMessage() {
     panel.webview.postMessage({
-      command: 'setKeybindings',
-      keybindings,
+      command: 'setShortcuts',
+      shortcuts,
       keyMappings,
       configKeyboardLanguage: vscode.workspace
         .getConfiguration('shortcutQuiz')
@@ -172,9 +172,9 @@ async function openHtmlEditor(context: vscode.ExtensionContext, keybindings: any
   }
   // sendStartMessage();
   panel.webview.onDidReceiveMessage((message) => {
-    if (message.command === 'keybindingAnswer') {
+    if (message.command === 'shortcutAnswer') {
       const shortcuts = context.globalState.get<Shortcuts>('shortcuts') ?? {};
-      const shortcut = shortcuts[message.keybindingCommand];
+      const shortcut = shortcuts[message.shortcutCommand];
       shortcut.learningState = shortcut.learningState + (message.correct ? 1 : -1);
       context.globalState.update('shortcuts', shortcuts);
     } else if (message.command === 'ready') {
