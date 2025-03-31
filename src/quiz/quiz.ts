@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import * as fsAsync from 'fs/promises';
 import * as path from 'path';
-import { Shortcuts } from '../shortcuts/types';
 import _ from 'lodash';
 import { getShortcuts, updateShortcuts } from '../shortcuts/shortcuts';
 
@@ -13,14 +12,32 @@ async function openHtmlEditor(context: vscode.ExtensionContext, shortcuts: any[]
     { enableScripts: true, retainContextWhenHidden: true },
   );
 
-  const htmlFilePath = path.join(context.extensionPath, 'src', 'quiz', 'quiz_editor.html');
-  let htmlContent = await fsAsync.readFile(htmlFilePath, 'utf8');
-
   const keyMappingsPath = path.join(context.extensionPath, 'data', 'key_mappings.json');
   const keyMappingsJson = await fsAsync.readFile(keyMappingsPath, 'utf8');
   const keyMappings = JSON.parse(keyMappingsJson);
 
-  panel.webview.html = htmlContent;
+  const stylesUri = panel.webview.asWebviewUri(
+    vscode.Uri.joinPath(context.extensionUri, 'src', 'quiz', 'styles.css'),
+  );
+  const scriptUri = panel.webview.asWebviewUri(
+    vscode.Uri.joinPath(context.extensionUri, 'src', 'quiz', 'script.js'),
+  );
+
+  panel.webview.html = /*html*/ `
+  <!DOCTYPE html>
+  <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Shortcut Quiz</title>
+      <link rel="stylesheet" href="${stylesUri}">
+    </head>
+    <body>
+      <div id="app"></div>
+      <script src="${scriptUri}" type="module"></script>
+    </body>
+  </html>`;
+
   function sendStartMessage() {
     panel.webview.postMessage({
       command: 'setShortcuts',
