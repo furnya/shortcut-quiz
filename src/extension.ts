@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { checkAndShowEditor, getQuizDisposables } from './quiz/quiz';
+import { checkAndShowEditor, getQuizDisposables } from './quiz/quiz_setup';
 import { getShortcutsDisposables } from './shortcuts/shortcuts';
 import { getTreeViewDisposables } from './tree_view/tree_view';
 

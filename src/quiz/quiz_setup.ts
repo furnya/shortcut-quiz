@@ -9,7 +9,11 @@ async function openHtmlEditor(context: vscode.ExtensionContext, shortcuts: any[]
     'shortcutQuiz',
     'Shortcut Quiz',
     vscode.ViewColumn.One,
-    { enableScripts: true, retainContextWhenHidden: true },
+    {
+      enableScripts: true,
+      retainContextWhenHidden: true,
+      localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'dist')],
+    },
   );
 
   const keyMappingsPath = path.join(context.extensionPath, 'data', 'key_mappings.json');
@@ -17,10 +21,12 @@ async function openHtmlEditor(context: vscode.ExtensionContext, shortcuts: any[]
   const keyMappings = JSON.parse(keyMappingsJson);
 
   const stylesUri = panel.webview.asWebviewUri(
-    vscode.Uri.joinPath(context.extensionUri, 'src', 'quiz', 'styles.css'),
+    // vscode.Uri.joinPath(context.extensionUri, 'src', 'quiz', 'styles.css'),
+    vscode.Uri.joinPath(context.extensionUri, 'dist', 'quiz', 'styles.css'),
   );
   const scriptUri = panel.webview.asWebviewUri(
-    vscode.Uri.joinPath(context.extensionUri, 'src', 'quiz', 'script.js'),
+    // vscode.Uri.joinPath(context.extensionUri, 'src', 'quiz', 'script.js'),
+    vscode.Uri.joinPath(context.extensionUri, 'dist', 'quiz', 'index.js'),
   );
 
   panel.webview.html = /*html*/ `

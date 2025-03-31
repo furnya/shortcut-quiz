@@ -1,16 +1,34 @@
-import { h, render, Component } from 'https://esm.sh/preact';
-import htm from 'https://esm.sh/htm';
+// import { h, render, Component } from 'https://esm.sh/preact';
+import { h, render, Component } from 'preact';
+import htm from 'htm';
 
 const html = htm.bind(h);
+declare function acquireVsCodeApi(): any;
 const vscode = acquireVsCodeApi();
 
 // Store state in vscode state storage
 // const previousState = vscode.getState() || { scores: {} };
-let keyMappings = {};
+let keyMappings: any = {};
 let configKeyboardLanguage = 'en';
 
-class ShortcutQuiz extends Component {
-  constructor(props) {
+interface ShortcutQuizState {
+  shortcuts: any[];
+  currentIndex: number;
+  currentStep: number[];
+  currentSteps: any[];
+  showAnswer: boolean;
+  isComplete: boolean;
+  isFadingOut: boolean;
+  pressedKeys: { key: string | null; keyCode: string }[];
+  feedback: { type: string; text: string } | null;
+  feedbackKey: number;
+}
+
+class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
+  feedbackTimer: null;
+  fadeOutTimer: null;
+  previousFeedbackKey: number;
+  constructor(props: any) {
     super(props);
     this.state = {
       shortcuts: [],
@@ -22,6 +40,7 @@ class ShortcutQuiz extends Component {
       isComplete: false,
       isFadingOut: false,
       pressedKeys: [],
+      feedbackKey: 0,
       // scores: previousState.scores,
     };
     this.feedbackTimer = null;
@@ -48,7 +67,7 @@ class ShortcutQuiz extends Component {
     }
   }
 
-  handleMessage = (event) => {
+  handleMessage = (event: any) => {
     const message = event.data;
     if (message.command === 'setShortcuts') {
       configKeyboardLanguage = message.configKeyboardLanguage || 'en';
@@ -59,12 +78,12 @@ class ShortcutQuiz extends Component {
     }
   };
 
-  translateVSCodeKey = (vsCodeKey) => {
+  translateVSCodeKey = (vsCodeKey: string) => {
     const key = vsCodeKey.toLowerCase();
     return (keyMappings[key]?.keyCode || vsCodeKey).toLowerCase();
   };
 
-  initializeShortcuts = (shortcuts) => {
+  initializeShortcuts = (shortcuts: any) => {
     if (!shortcuts || !shortcuts.length) return;
 
     const currentSteps = this.getStepsFromShortcuts(shortcuts[0]);
@@ -77,7 +96,7 @@ class ShortcutQuiz extends Component {
     });
   };
 
-  getStepsFromShortcuts = (shortcut) => {
+  getStepsFromShortcuts = (shortcut: any) => {
     if (!shortcut || !shortcut.keys.length) return [];
 
     const steps = [];
@@ -91,7 +110,7 @@ class ShortcutQuiz extends Component {
           key: this.translateVSCodeKey(vsCodeKeys[vsCodeKeys.length - 1]),
           modifiers: vsCodeKeys
             .slice(0, vsCodeKeys.length - 1)
-            .map((k) => this.translateVSCodeKey(k)),
+            .map((k: any) => this.translateVSCodeKey(k)),
         });
       }
       steps.push(step);
@@ -99,7 +118,7 @@ class ShortcutQuiz extends Component {
     return steps;
   };
 
-  getKeyAndKeyCode(event) {
+  getKeyAndKeyCode(event: any) {
     let key = event.key.toLowerCase();
     let keyCode = event.code.toLowerCase();
     if (keyCode.startsWith('key') && !/[a-z]/.test(key)) {
@@ -111,7 +130,7 @@ class ShortcutQuiz extends Component {
     return { key, keyCode };
   }
 
-  handleKeyup = (event) => {
+  handleKeyup = (event: any) => {
     console.debug('Keyup event:', event);
     const { pressedKeys } = this.state;
     const keyPair = this.getKeyAndKeyCode(event);
@@ -126,7 +145,7 @@ class ShortcutQuiz extends Component {
     }
   };
 
-  handleKeydown = async (event) => {
+  handleKeydown = async (event: any) => {
     console.debug('Keydown event:', event);
     const { currentStep, currentSteps, showAnswer, pressedKeys } = this.state;
     const { key: pressedKey, keyCode: pressedKeyCode } = this.getKeyAndKeyCode(event);
@@ -240,7 +259,7 @@ class ShortcutQuiz extends Component {
   };
 
   handleShowAnswer = () => {
-    const { shortcuts, currentIndex, scores } = this.state;
+    const { shortcuts, currentIndex } = this.state;
     const current = shortcuts[currentIndex];
 
     // Update score for this shortcut (negative)
@@ -298,47 +317,43 @@ class ShortcutQuiz extends Component {
     });
   };
 
-  renderKeyboardHint = () => {
+  renderKeyboardHint() {
     const { currentSteps, pressedKeys } = this.state;
 
     if (!currentSteps || currentSteps.length === 0) return null;
 
+    function getActive(key: string) {
+      return pressedKeys.find((k) => k.key === key || k.keyCode === key) ? 'active' : '';
+    }
+    function formatModifier(key: any) {
+      return html`<span class="keyboard-key ${getActive(key)}">${key}</span>+`;
+    }
+
+    function formatSteps(s: any) {
+      return s.map(
+        (step: any, stepIndex: any) =>
+          step.modifiers.map((key: any) => formatModifier(key)) +
+          html`<span class="keyboard-key ${getActive(step.key)}"
+              >${step.displayKeys?.[configKeyboardLanguage] ?? step.key}</span
+            >
+            ${stepIndex < s.length - 1 ? ' then ' : ''}`,
+      );
+    }
+
+    const stepList = currentSteps.map(
+      (s) => html`
+        <li>
+          <div class="keyboard-hint">${formatSteps(s)}</div>
+        </li>
+      `,
+    );
+
     return html`
       <ul>
-        ${currentSteps.map(
-          (s) => html`
-            <li>
-              <div class="keyboard-hint">
-                ${s.map(
-                  (step, stepIndex) =>
-                    html`${step.modifiers.map(
-                        (key) =>
-                          html`<span
-                              class="keyboard-key ${pressedKeys.find(
-                                (k) => k.key === key || k.keyCode === key,
-                              )
-                                ? 'active'
-                                : ''}"
-                              >${key}</span
-                            >+`,
-                      )}
-                      <span
-                        class="keyboard-key ${pressedKeys.find(
-                          (k) => k.key === step.key || k.keyCode === step.key,
-                        )
-                          ? 'active'
-                          : ''}"
-                        >${step.displayKeys?.[configKeyboardLanguage] ?? step.key}</span
-                      >
-                      ${stepIndex < s.length - 1 ? ' then ' : ''}`,
-                )}
-              </div>
-            </li>
-          `,
-        )}
+        ${stepList}
       </ul>
     `;
-  };
+  }
 
   renderFeedback = () => {
     const { feedback, feedbackKey } = this.state;
@@ -409,4 +424,4 @@ class ShortcutQuiz extends Component {
 }
 
 // Render the app
-render(h(ShortcutQuiz, {}), document.getElementById('app'));
+render(h(ShortcutQuiz, {}), document.getElementById('app')!);
