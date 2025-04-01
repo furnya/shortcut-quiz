@@ -3,8 +3,13 @@ import * as fsAsync from 'fs/promises';
 import * as path from 'path';
 import _ from 'lodash';
 import { getShortcuts, updateShortcuts } from '../shortcuts/shortcuts';
+import { Shortcut } from '../shortcuts/types';
+import { IncomingMessage, KeyMappings, OutgoingMessage, ShortcutAnswerMessage } from './types';
 
-async function openHtmlEditor(context: vscode.ExtensionContext, shortcuts: any[] = []) {
+async function openHtmlEditor(
+  context: vscode.ExtensionContext,
+  shortcutSelection: [string, Shortcut][] = [],
+) {
   const panel = vscode.window.createWebviewPanel(
     'shortcutQuiz',
     'Shortcut Quiz',
@@ -18,7 +23,7 @@ async function openHtmlEditor(context: vscode.ExtensionContext, shortcuts: any[]
 
   const keyMappingsPath = path.join(context.extensionPath, 'data', 'key_mappings.json');
   const keyMappingsJson = await fsAsync.readFile(keyMappingsPath, 'utf8');
-  const keyMappings = JSON.parse(keyMappingsJson);
+  const keyMappings = JSON.parse(keyMappingsJson) as KeyMappings;
 
   const stylesUri = panel.webview.asWebviewUri(
     // vscode.Uri.joinPath(context.extensionUri, 'src', 'quiz', 'styles.css'),
@@ -45,21 +50,26 @@ async function openHtmlEditor(context: vscode.ExtensionContext, shortcuts: any[]
   </html>`;
 
   function sendStartMessage() {
-    panel.webview.postMessage({
+    const message: OutgoingMessage = {
       command: 'setShortcuts',
-      shortcuts,
+      shortcuts: shortcutSelection.map(([k, s]) => ({
+        title: s.title,
+        keys: Object.keys(s.keys),
+        command: k,
+      })),
       keyMappings,
-      configKeyboardLanguage: vscode.workspace
-        .getConfiguration('shortcutQuiz')
-        .get('keyboardLayout'),
-    });
+      configKeyboardLanguage:
+        vscode.workspace.getConfiguration('shortcutQuiz').get('keyboardLayout') ?? 'en',
+    };
+    panel.webview.postMessage(message);
   }
   // sendStartMessage();
-  panel.webview.onDidReceiveMessage((message) => {
+  panel.webview.onDidReceiveMessage((message: IncomingMessage) => {
     if (message.command === 'shortcutAnswer') {
+      const typedMessage = message as ShortcutAnswerMessage;
       updateShortcuts(context, (shortcuts) => {
-        const shortcut = shortcuts[message.shortcutCommand];
-        shortcut.learningState = shortcut.learningState + (message.correct ? 1 : -1);
+        const shortcut = shortcuts[typedMessage.shortcutCommand];
+        shortcut.learningState = shortcut.learningState + (typedMessage.correct ? 1 : -1);
         return shortcuts;
       });
     } else if (message.command === 'ready') {
@@ -104,10 +114,7 @@ export function getQuizDisposables(context: vscode.ExtensionContext) {
       //   'workbench.action.closeActiveEditor',
       //   'breadcrumbs.focus',
       // ].map((k) => [k, shortcuts[k]]);
-      await openHtmlEditor(
-        context,
-        selection.map(([k, s]) => ({ title: s.title, keys: Object.keys(s.keys), command: k })),
-      );
+      await openHtmlEditor(context, selection);
     },
   );
   return [startNewQuizCommand];

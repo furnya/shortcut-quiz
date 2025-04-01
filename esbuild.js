@@ -62,7 +62,7 @@ async function main() {
     ],
   });
   const ctx2 = await esbuild.context({
-    entryPoints: ['src/quiz/index.ts'],
+    entryPoints: ['src/quiz/index.tsx'],
     bundle: true,
     format: 'esm',
     minify: production,

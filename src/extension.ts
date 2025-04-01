@@ -12,9 +12,9 @@ export async function activate(context: vscode.ExtensionContext) {
   // TODO group commands by similarity (arrowup/arrowdown commands can be combined)
   // TODO titles for defaults
 
-  const treeViewDisposables = getTreeViewDisposables(context);
   const quizDisposables = getQuizDisposables(context);
   const shortcutsDisposables = await getShortcutsDisposables(context);
+  const treeViewDisposables = getTreeViewDisposables(context);
 
   context.subscriptions.push(
     {
