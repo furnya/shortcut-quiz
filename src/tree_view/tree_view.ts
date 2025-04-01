@@ -1,13 +1,15 @@
 import * as vscode from 'vscode';
 import { getShortcuts } from '../shortcuts/shortcuts';
 import { Shortcut } from '../shortcuts/types';
-import { ShortcutTreeItem } from './tree_item';
+import { CommandTreeItem, GenericShortcutTreeItem } from './tree_item';
 
-abstract class ShortcutTreeDataProvider implements vscode.TreeDataProvider<ShortcutTreeItem> {
+abstract class ShortcutTreeDataProvider
+  implements vscode.TreeDataProvider<GenericShortcutTreeItem>
+{
   constructor(protected readonly context: vscode.ExtensionContext) {}
-  private _onDidChangeTreeData: vscode.EventEmitter<ShortcutTreeItem | undefined> =
-    new vscode.EventEmitter<ShortcutTreeItem | undefined>();
-  readonly onDidChangeTreeData: vscode.Event<ShortcutTreeItem | undefined> =
+  private _onDidChangeTreeData: vscode.EventEmitter<GenericShortcutTreeItem | undefined> =
+    new vscode.EventEmitter<GenericShortcutTreeItem | undefined>();
+  readonly onDidChangeTreeData: vscode.Event<GenericShortcutTreeItem | undefined> =
     this._onDidChangeTreeData.event;
   sortOrder: 'alphabetical' | 'learningState' = 'alphabetical';
   protected abstract filterCondition(shortcut: Shortcut): boolean;
@@ -16,11 +18,11 @@ abstract class ShortcutTreeDataProvider implements vscode.TreeDataProvider<Short
     this._onDidChangeTreeData.fire(undefined);
   }
 
-  getTreeItem(element: ShortcutTreeItem): vscode.TreeItem {
+  getTreeItem(element: GenericShortcutTreeItem): vscode.TreeItem {
     return element;
   }
 
-  getChildren(element?: ShortcutTreeItem): ShortcutTreeItem[] {
+  getChildren(element?: GenericShortcutTreeItem): GenericShortcutTreeItem[] {
     const shortcuts = getShortcuts(this.context);
     if (!element) {
       return Object.entries(shortcuts)
@@ -33,10 +35,7 @@ abstract class ShortcutTreeDataProvider implements vscode.TreeDataProvider<Short
           }
           return keyA.localeCompare(keyB);
         })
-        .map(
-          ([key, value]) =>
-            new ShortcutTreeItem(this.context, key, value, false, null, this.collapseCommand),
-        );
+        .map(([key, value]) => new CommandTreeItem(this.context, key, value, this.collapseCommand));
     }
     return element.children;
   }

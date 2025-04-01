@@ -1,71 +1,81 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { TreeItemCollapsibleState } from 'vscode';
+import { Shortcut } from '../shortcuts/types';
 
-export class ShortcutTreeItem extends vscode.TreeItem {
-  public readonly children: ShortcutTreeItem[] = [];
+export class GenericShortcutTreeItem extends vscode.TreeItem {
+  public children: GenericShortcutTreeItem[] = [];
+
+  constructor(
+    public readonly label: string,
+    public readonly collapsibleState: TreeItemCollapsibleState = TreeItemCollapsibleState.None,
+  ) {
+    super(label, collapsibleState);
+  }
+}
+
+export class CommandTreeItem extends GenericShortcutTreeItem {
   public readonly commandString: string;
   constructor(
-    public readonly context: vscode.ExtensionContext,
-    public readonly key: string,
-    public readonly value: any,
-    public readonly isShortcut: boolean = false,
-    public readonly parent: ShortcutTreeItem | null = null,
+    context: vscode.ExtensionContext,
+    command: string,
+    value: Shortcut,
     public readonly collapseCommand: boolean = false,
   ) {
-    let label = isShortcut ? key : key.charAt(0).toUpperCase() + key.slice(1);
-    if (key === 'learningState') {
-      label = 'Score';
+    const label = value.title
+      ? value.title.charAt(0).toUpperCase() + value.title.slice(1)
+      : command;
+    super(
+      label,
+      collapseCommand ? TreeItemCollapsibleState.Collapsed : TreeItemCollapsibleState.Expanded,
+    );
+    this.commandString = command;
+    this.contextValue = 'command';
+    this.description = command;
+    this.children = [
+      ...Object.entries(value.keys).map(([k, v]) => new ShortcutTreeItem(context, k, v)),
+      new ScoreTreeItem(value.learningState),
+      new OriginsTreeItem(value.origins),
+    ];
+  }
+}
+
+export class ScoreTreeItem extends GenericShortcutTreeItem {
+  constructor(public readonly value: number) {
+    super(`Score: ${value}`);
+  }
+}
+
+export class OriginsTreeItem extends GenericShortcutTreeItem {
+  constructor(public readonly value: string[]) {
+    super(`Origins: ${value.join(', ')}`);
+  }
+}
+
+export class ShortcutTreeItem extends GenericShortcutTreeItem {
+  constructor(
+    context: vscode.ExtensionContext,
+    public readonly key: string,
+    public readonly value: string[] | null,
+  ) {
+    let collapsibleState = TreeItemCollapsibleState.Collapsed;
+    if (value === null) {
+      collapsibleState = TreeItemCollapsibleState.None;
     }
-    let collapsibleState = vscode.TreeItemCollapsibleState.Expanded;
-    if (typeof value !== 'object' || value === null) {
-      label += `: ${value}`;
-      collapsibleState = vscode.TreeItemCollapsibleState.None;
-    }
-    super(label, collapsibleState);
-    if (!parent) {
-      this.contextValue = 'command';
-      this.label = value.title ?? key;
-      this.description = key;
-      if (collapseCommand) {
-        this.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
-      }
-    }
-    if (key === 'origins') {
-      this.label = `Origins: ${value.join(', ')}`;
-      this.children = [];
-      this.collapsibleState = vscode.TreeItemCollapsibleState.None;
-    }
-    this.commandString = key;
-    this.parent = parent;
-    if (this.isShortcut) {
-      this.iconPath = vscode.Uri.file(path.join(context.extensionPath, 'assets', 'keyboard.svg'));
-      this.label = key;
-      this.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
-      if (value === null) {
-        this.collapsibleState = vscode.TreeItemCollapsibleState.None;
-      }
-    } else if (this.parent?.isShortcut) {
-      this.iconPath = vscode.Uri.file(
-        path.join(context.extensionPath, 'assets', 'question_mark.svg'),
-      );
-      this.label = value;
-    }
-    if (typeof value === 'object' && value !== null && key !== 'origins') {
-      this.children = [];
-      if (!this.parent) {
-        this.children.push(
-          ...Object.entries(value.keys).map(
-            ([k, v]) => new ShortcutTreeItem(context, k, v, true, this),
-          ),
-        );
-      }
-      this.children.push(
-        ...Object.entries(value)
-          .filter(([k, v]) => !['title', 'important', 'keys'].includes(k))
-          .map(([k, v]) => {
-            return new ShortcutTreeItem(context, k, v, false, this);
-          }),
-      );
-    }
+    super(key, collapsibleState);
+    this.iconPath = vscode.Uri.file(path.join(context.extensionPath, 'assets', 'keyboard.svg'));
+    this.children = (value || []).map((v) => new WhenTreeItem(context, v));
+  }
+}
+
+export class WhenTreeItem extends GenericShortcutTreeItem {
+  constructor(
+    context: vscode.ExtensionContext,
+    public readonly key: string,
+  ) {
+    super(key, TreeItemCollapsibleState.None);
+    this.iconPath = vscode.Uri.file(
+      path.join(context.extensionPath, 'assets', 'question_mark.svg'),
+    );
   }
 }
