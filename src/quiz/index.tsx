@@ -23,6 +23,8 @@ interface ShortcutQuizState {
   pressedKeys: { key: string | null; keyCode: string }[];
   feedback: { type: string; text: string } | null;
   feedbackKey: number;
+  playgroundOpen: boolean;
+  correctCounter: number;
 }
 
 interface ShortcutStep {
@@ -54,6 +56,8 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
       isFadingOut: false,
       pressedKeys: [],
       feedbackKey: 0,
+      playgroundOpen: false,
+      correctCounter: 0,
       // scores: previousState.scores,
     };
     this.feedbackTimer = null;
@@ -87,7 +91,23 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
       keyMappings = message.keyMappings;
       this.initializeShortcuts(message.shortcuts);
       window.focus();
+    } else if (message.command === 'playgroundOpened') {
+      this.setState({ playgroundOpen: true });
+    } else if (message.command === 'playgroundClosed') {
+      this.setState({ playgroundOpen: false });
     }
+  };
+
+  sendPlaygroundMessage = (close: boolean) => {
+    const message: IncomingMessage = {
+      command: close ? 'closePlayground' : 'openPlayground',
+    };
+    vscode.postMessage(message);
+  };
+
+  quit = () => {
+    this.sendPlaygroundMessage(true);
+    vscode.postMessage({ command: 'quit' });
   };
 
   translateVSCodeKey = (vsCodeKey: string) => {
@@ -244,7 +264,7 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
 
   handleCorrectAnswer = () => {
     // const { shortcuts, currentIndex, scores } = this.state;
-    const { shortcuts, currentIndex } = this.state;
+    const { shortcuts, currentIndex, correctCounter } = this.state;
     const current = shortcuts[currentIndex];
 
     // Update score for this shortcut
@@ -254,6 +274,7 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
     this.setState({
       showAnswer: true,
       feedback: { type: 'correct', text: 'Correct! Well done.' },
+      correctCounter: correctCounter + 1,
       // scores: updatedScores,
     });
 
@@ -324,6 +345,7 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
       showAnswer: false,
       feedback: null,
       isComplete: false,
+      correctCounter: 0,
     });
   };
 
@@ -423,7 +445,7 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
   };
 
   render() {
-    const { shortcuts, currentIndex, showAnswer, isComplete } = this.state;
+    const { shortcuts, currentIndex, showAnswer, isComplete, playgroundOpen } = this.state;
 
     if (shortcuts.length === 0) {
       return html`<div>Loading...</div>`;
@@ -434,7 +456,14 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
         <div class="completion">
           <h2>Quiz Complete!</h2>
           <p>You've finished the keyboard shortcuts quiz.</p>
+          <p>
+            You've answered ${this.state.correctCounter} out of ${shortcuts.length} questions
+            correctly.
+          </p>
           <button class="keyboard-key" onClick=${this.handleRestart}>Start Over</button>
+          <br />
+          <br />
+          <button class="keyboard-key" onClick=${this.quit}>Quit</button>
         </div>
       `;
     }
@@ -444,7 +473,12 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
     return (
       <div class="app-main">
         <div class="progress">
-          Question {currentIndex + 1}/{shortcuts.length}
+          <span>
+            Question {currentIndex + 1}/{shortcuts.length}
+          </span>
+          <button class="keyboard-key" onClick={() => this.sendPlaygroundMessage(playgroundOpen)}>
+            {playgroundOpen ? 'Close' : 'Open'} Editor Playground →
+          </button>
         </div>
         <div class="question">
           What is the shortcut for "{current.title}" ({current.command})?
@@ -456,7 +490,10 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
           </div>
         )}
         <div class="flex-spacer"></div>
-        <div style="display: flex; justify-content: flex-end;">
+        <div style="display: flex; justify-content: space-between;">
+          <button class="keyboard-key" onClick={() => this.quit()}>
+            Quit
+          </button>
           {!showAnswer ? (
             <button
               class="keyboard-key"

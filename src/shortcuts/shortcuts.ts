@@ -93,10 +93,6 @@ class ShortcutLoadManager {
             .replace(/([A-Z])/g, ' $1') || command;
         finalTitle = finalTitle.charAt(0).toUpperCase() + finalTitle.slice(1);
       }
-      if (command === 'gitlens.key.alt+.') {
-        console.log('gitlens.key.alt+.', { command, key, when, title, origin });
-        console.log(finalTitle);
-      }
       this.shortcuts[command] = {
         title: finalTitle.trim(),
         keys: {

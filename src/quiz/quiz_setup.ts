@@ -4,7 +4,14 @@ import * as path from 'path';
 import _ from 'lodash';
 import { getShortcuts, updateShortcuts } from '../shortcuts/shortcuts';
 import { Shortcut } from '../shortcuts/types';
-import { IncomingMessage, KeyMappings, OutgoingMessage, ShortcutAnswerMessage } from './types';
+import {
+  IncomingMessage,
+  KeyMappings,
+  PlaygroundClosedMessage,
+  PlaygroundOpenedMessage,
+  SetShortcutsMessage,
+  ShortcutAnswerMessage,
+} from './types';
 
 async function openHtmlEditor(
   context: vscode.ExtensionContext,
@@ -50,7 +57,7 @@ async function openHtmlEditor(
   </html>`;
 
   function sendStartMessage() {
-    const message: OutgoingMessage = {
+    const message: SetShortcutsMessage = {
       command: 'setShortcuts',
       shortcuts: shortcutSelection.map(([k, s]) => ({
         title: s.title,
@@ -63,8 +70,30 @@ async function openHtmlEditor(
     };
     panel.webview.postMessage(message);
   }
-  // sendStartMessage();
-  panel.webview.onDidReceiveMessage((message: IncomingMessage) => {
+  let playgroundEditor: vscode.TextEditor | null = await openPlayground(context);
+  panel.webview.postMessage({ command: 'playgroundOpened' } as PlaygroundOpenedMessage);
+  function closePlayground() {
+    if (!playgroundEditor) {
+      return;
+    }
+    // empty document
+    playgroundEditor.edit((edit) => {
+      edit.replace(new vscode.Range(0, 0, playgroundEditor?.document.lineCount ?? 100_000, 0), '');
+    });
+    const foundTabGroup = vscode.window.tabGroups.all.find(
+      (tg) => tg.viewColumn === playgroundEditor?.viewColumn,
+    );
+    const foundTab = foundTabGroup?.tabs.find(
+      (t) => (t.input as vscode.TabInputText)?.uri.fsPath === playgroundEditor?.document.uri.fsPath,
+    );
+    if (!foundTab) {
+      return;
+    }
+    vscode.window.tabGroups.close(foundTab);
+    playgroundEditor = null;
+    panel.webview.postMessage({ command: 'playgroundClosed' } as PlaygroundClosedMessage);
+  }
+  panel.webview.onDidReceiveMessage(async (message: IncomingMessage) => {
     if (message.command === 'shortcutAnswer') {
       const typedMessage = message as ShortcutAnswerMessage;
       updateShortcuts(context, (shortcuts) => {
@@ -74,8 +103,28 @@ async function openHtmlEditor(
       });
     } else if (message.command === 'ready') {
       sendStartMessage();
+    } else if (message.command === 'closePlayground') {
+      closePlayground();
+    } else if (message.command === 'openPlayground') {
+      playgroundEditor = await openPlayground(context);
+      panel.webview.postMessage({ command: 'playgroundOpened' } as PlaygroundOpenedMessage);
+    } else if (message.command === 'quit') {
+      closePlayground();
+      panel.dispose();
     }
   });
+}
+
+async function openPlayground(context: vscode.ExtensionContext) {
+  const sampleContent = await fsAsync.readFile(
+    path.join(context.extensionPath, 'assets', 'typescript_sample.ts'),
+    'utf8',
+  );
+  const document = await vscode.workspace.openTextDocument({
+    content: sampleContent,
+    language: 'typescript',
+  });
+  return await vscode.window.showTextDocument(document, vscode.ViewColumn.Beside, true);
 }
 
 export async function checkAndShowEditor(context: vscode.ExtensionContext) {

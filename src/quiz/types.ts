@@ -7,7 +7,24 @@ export interface ShortcutAnswerMessage {
   shortcutCommand: string;
   correct: boolean;
 }
-export type IncomingMessage = ReadyMessage | ShortcutAnswerMessage;
+
+export interface ClosePlaygroundMessage {
+  command: 'closePlayground';
+}
+export interface OpenPlaygroundMessage {
+  command: 'openPlayground';
+}
+
+export interface QuitMessage {
+  command: 'quit';
+}
+
+export type IncomingMessage =
+  | ReadyMessage
+  | ShortcutAnswerMessage
+  | ClosePlaygroundMessage
+  | OpenPlaygroundMessage
+  | QuitMessage;
 
 export interface DisplayKeys {
   de: string;
@@ -27,9 +44,19 @@ export interface QuizShortcut {
   command: string;
 }
 
-export interface OutgoingMessage {
+export interface PlaygroundClosedMessage {
+  command: 'playgroundClosed';
+}
+export interface PlaygroundOpenedMessage {
+  command: 'playgroundOpened';
+}
+export interface SetShortcutsMessage {
   command: 'setShortcuts';
   configKeyboardLanguage: 'en' | 'de';
   shortcuts: QuizShortcut[];
   keyMappings: KeyMappings;
 }
+export type OutgoingMessage =
+  | SetShortcutsMessage
+  | PlaygroundClosedMessage
+  | PlaygroundOpenedMessage;
