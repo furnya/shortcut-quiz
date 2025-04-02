@@ -117,7 +117,7 @@ async function openHtmlEditor(
 
 async function openPlayground(context: vscode.ExtensionContext) {
   const sampleContent = await fsAsync.readFile(
-    path.join(context.extensionPath, 'assets', 'typescript_sample.ts'),
+    path.join(context.extensionPath, 'src', 'quiz', 'assets', 'typescript_sample.ts'),
     'utf8',
   );
   const document = await vscode.workspace.openTextDocument({
