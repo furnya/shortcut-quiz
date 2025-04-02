@@ -2,7 +2,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as vscode from 'vscode';
 import * as fsAsync from 'fs/promises';
-import { ShortcutTreeItem } from '../tree_view/tree_item';
+import { CommandTreeItem, ShortcutTreeItem } from '../tree_view/tree_item';
 import { ShortcutImport, Shortcuts } from './types';
 
 export const importantShortcutsKey = 'importantShortcuts';
@@ -251,7 +251,7 @@ export async function getShortcutsDisposables(context: vscode.ExtensionContext) 
     setTimeout(() => reloadAllShortcuts(), 10000);
   });
 
-  function updateCommandImportance(item: ShortcutTreeItem, importance: boolean) {
+  function updateCommandImportance(item: CommandTreeItem, importance: boolean) {
     updateShortcuts(context, (shortcuts) => {
       if (shortcuts[item.commandString]) {
         shortcuts[item.commandString].important = importance;
@@ -264,11 +264,11 @@ export async function getShortcutsDisposables(context: vscode.ExtensionContext) 
 
   const starCommandCommand = vscode.commands.registerCommand(
     'shortcut-quiz.starCommand',
-    (item: ShortcutTreeItem) => updateCommandImportance(item, true),
+    (item: CommandTreeItem) => updateCommandImportance(item, true),
   );
   const unstarCommandCommand = vscode.commands.registerCommand(
     'shortcut-quiz.unstarCommand',
-    (item: ShortcutTreeItem) => updateCommandImportance(item, false),
+    (item: CommandTreeItem) => updateCommandImportance(item, false),
   );
 
   await reloadAllShortcuts();
