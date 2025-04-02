@@ -3,9 +3,7 @@ import { getShortcuts } from '../shortcuts/shortcuts';
 import { Shortcut } from '../shortcuts/types';
 import { CommandTreeItem, GenericShortcutTreeItem } from './tree_item';
 
-abstract class ShortcutTreeDataProvider
-  implements vscode.TreeDataProvider<GenericShortcutTreeItem>
-{
+abstract class SCTProvider implements vscode.TreeDataProvider<GenericShortcutTreeItem> {
   constructor(protected readonly context: vscode.ExtensionContext) {}
   private _onDidChangeTreeData: vscode.EventEmitter<GenericShortcutTreeItem | undefined> =
     new vscode.EventEmitter<GenericShortcutTreeItem | undefined>();
@@ -40,13 +38,13 @@ abstract class ShortcutTreeDataProvider
     return element.children;
   }
 }
-export class ShortcutInactiveTreeDataProvider extends ShortcutTreeDataProvider {
+export class ShortcutInactiveTreeDataProvider extends SCTProvider {
   protected filterCondition(shortcut: Shortcut): boolean {
     return !shortcut.important;
   }
   protected collapseCommand = true;
 }
-export class ShortcutActiveTreeDataProvider extends ShortcutTreeDataProvider {
+export class ShortcutActiveTreeDataProvider extends SCTProvider {
   protected filterCondition(shortcut: Shortcut): boolean {
     return shortcut.important;
   }

@@ -51,19 +51,7 @@ class TaskManager {
     const allTasks = this.tasks.getAll();
     return allTasks.find((t) => t.id === taskId)?.title ?? 'Unknown Task';
   }
-  filterTasks = (filter: TaskFilter): Task[] =>
-    this.tasks.getAll().filter((task) => {
-      switch (filter) {
-        case 'active':
-          return !task.completed;
-        case 'completed':
-          return task.completed;
-        default:
-          return true;
-      }
-    });
 }
 const manager = new TaskManager();
 const newTask = manager.createTask('Learn TypeScript', Priority.High);
 manager.addTags(newTask.id, 'programming', 'learning');
-console.log(manager.filterTasks('all'));
