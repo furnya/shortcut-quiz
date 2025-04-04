@@ -6,14 +6,21 @@ export interface ShortcutImport {
   origin?: string;
 }
 
-export interface Shortcut {
+export interface ShortcutNonRecursive {
   title: string;
   keys: { [key: string]: string[] | null };
-  learningState: number;
   origins: string[];
+}
+export interface Shortcut extends ShortcutNonRecursive {
+  relatedShortcuts?: ShortcutsNonRecursive;
   important: boolean;
+  learningState: number;
 }
 
 export interface Shortcuts {
   [command: string]: Shortcut;
+}
+
+export interface ShortcutsNonRecursive {
+  [command: string]: ShortcutNonRecursive;
 }

@@ -13,7 +13,7 @@ import {
   ShortcutAnswerMessage,
 } from './types';
 
-async function openHtmlEditor(
+async function openQuizEditor(
   context: vscode.ExtensionContext,
   shortcutSelection: [string, Shortcut][] = [],
 ) {
@@ -63,6 +63,11 @@ async function openHtmlEditor(
         title: s.title,
         keys: Object.keys(s.keys),
         command: k,
+        relatedShortcuts: Object.entries(s.relatedShortcuts ?? {}).map(([command, value]) => ({
+          title: value.title,
+          keys: Object.keys(value.keys),
+          command,
+        })),
       })),
       keyMappings,
       configKeyboardLanguage:
@@ -70,8 +75,12 @@ async function openHtmlEditor(
     };
     panel.webview.postMessage(message);
   }
-  let playgroundEditor: vscode.TextEditor | null = await openPlayground(context);
-  panel.webview.postMessage({ command: 'playgroundOpened' } as PlaygroundOpenedMessage);
+  let playgroundEditor: vscode.TextEditor | null = null;
+  if (vscode.workspace.getConfiguration('shortcutQuiz').get('showPlayground')) {
+    playgroundEditor = await openPlayground(context);
+    vscode.commands.executeCommand('workbench.action.evenEditorWidths');
+    panel.webview.postMessage({ command: 'playgroundOpened' } as PlaygroundOpenedMessage);
+  }
   function closePlayground() {
     if (!playgroundEditor) {
       return;
@@ -151,19 +160,22 @@ export function getQuizDisposables(context: vscode.ExtensionContext) {
     'shortcut-quiz.startNewQuiz',
     async () => {
       const shortcuts = getShortcuts(context);
+      const numberOfQuestions = vscode.workspace
+        .getConfiguration('shortcutQuiz')
+        .get<number>('numberOfQuestions', 10);
       let selection = Object.entries(shortcuts).filter(([k, s]) => s.important);
       _.shuffle(selection);
       // selection = selection.sort((a, b) => a[1].learningState - b[1].learningState);
       selection = _.sortBy(selection, (s) => s[1].learningState);
       // selection = _.sampleSize(selection, 10);
-      selection = selection.slice(0, 10);
+      selection = selection.slice(0, numberOfQuestions);
       // selection = [
       //   'workbench.action.exitZenMode',
       //   'editor.action.outdentLines',
       //   'workbench.action.closeActiveEditor',
       //   'breadcrumbs.focus',
       // ].map((k) => [k, shortcuts[k]]);
-      await openHtmlEditor(context, selection);
+      await openQuizEditor(context, selection);
     },
   );
   return [startNewQuizCommand];

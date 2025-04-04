@@ -29,7 +29,6 @@ export async function activate(context: vscode.ExtensionContext) {
     ...quizDisposables,
     ...shortcutsDisposables,
   );
-  // context.globalState.update('shortcuts', {});
   // only for testing
   // vscode.commands.executeCommand('shortcut-quiz.startNewQuiz');
   quizInterval = setInterval(async () => checkAndShowEditor(context), 30 * 1000);

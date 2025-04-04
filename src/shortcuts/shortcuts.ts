@@ -1,15 +1,15 @@
-import * as path from 'path';
 import * as fs from 'fs';
-import * as vscode from 'vscode';
 import * as fsAsync from 'fs/promises';
-import { CommandTreeItem, ShortcutTreeItem } from '../tree_view/tree_item';
-import { ShortcutImport, Shortcuts } from './types';
+import * as path from 'path';
+import * as vscode from 'vscode';
+import { MainCommandTreeItem } from '../tree_view/tree_item';
+import { ShortcutImport, ShortcutNonRecursive, Shortcuts } from './types';
 
 export const importantShortcutsKey = 'importantShortcuts';
 export const shortcutsKey = 'shortcuts';
 
-function getImportantShortcuts(context: vscode.ExtensionContext): string[] {
-  return context.globalState.get<string[]>(importantShortcutsKey) ?? [];
+function getImportantShortcuts(context: vscode.ExtensionContext): string[][] {
+  return context.globalState.get<string[][]>(importantShortcutsKey) ?? [];
 }
 
 function setImportantShortcuts(context: vscode.ExtensionContext, shortcuts: string[]) {
@@ -67,23 +67,35 @@ function normalizeKey(key: string) {
 }
 
 class ShortcutLoadManager {
-  private importantShortcuts: string[];
+  private importantShortcuts: string[][];
+  private backupImportantCommands: { command: string; important: boolean }[] = [];
   constructor(
-    public readonly shortcuts: Shortcuts,
+    public shortcuts: Shortcuts,
     context: vscode.ExtensionContext,
   ) {
     this.importantShortcuts = getImportantShortcuts(context);
   }
 
   resetKeys() {
-    for (const command in this.shortcuts) {
-      this.shortcuts[command].keys = {};
-    }
+    this.backupImportantCommands = Object.entries(this.shortcuts).map(([command, shortcut]) => ({
+      command,
+      important: shortcut.important,
+    }));
+    this.shortcuts = {};
   }
 
   addShortcut({ command, key, when, title, origin }: ShortcutImport) {
     const normalizedKey = normalizeKey(key);
-    if (!this.shortcuts[command]) {
+    let existingShortcut: ShortcutNonRecursive | undefined = this.shortcuts[command];
+    if (!existingShortcut) {
+      const existingMainShortcut = Object.values(this.shortcuts).find((s) =>
+        Object.keys(s.relatedShortcuts ?? {}).includes(command),
+      );
+      if (existingMainShortcut) {
+        existingShortcut = existingMainShortcut.relatedShortcuts![command];
+      }
+    }
+    if (!existingShortcut) {
       let finalTitle = title;
       if (!finalTitle) {
         finalTitle =
@@ -100,10 +112,9 @@ class ShortcutLoadManager {
         },
         learningState: 0,
         origins: origin ? [origin] : [],
-        important: this.importantShortcuts.includes(command),
+        important: false,
       };
     } else {
-      const existingShortcut = this.shortcuts[command];
       if (origin && !existingShortcut.origins.includes(origin)) {
         existingShortcut.origins.push(origin);
       }
@@ -137,6 +148,35 @@ class ShortcutLoadManager {
     } else {
       delete existingShortcut.keys[normalizedKey];
     }
+  }
+
+  groupImportantShortcuts() {
+    this.importantShortcuts.forEach((group) => {
+      const mainCommand = group[0];
+      const mainShortcut = this.shortcuts[mainCommand];
+      mainShortcut.important = true;
+      group.slice(1).forEach((command) => {
+        const shortcut = this.shortcuts[command];
+        if (shortcut) {
+          mainShortcut.relatedShortcuts = mainShortcut.relatedShortcuts || {};
+          mainShortcut.relatedShortcuts[command] = {
+            title: shortcut.title,
+            keys: shortcut.keys,
+            origins: shortcut.origins,
+          };
+          delete this.shortcuts[command];
+        }
+      });
+    });
+  }
+
+  restoreImportantShortcuts() {
+    this.backupImportantCommands.forEach(({ command, important }) => {
+      const shortcut = this.shortcuts[command];
+      if (shortcut) {
+        shortcut.important = important;
+      }
+    });
   }
 }
 
@@ -226,14 +266,27 @@ export async function getShortcutsDisposables(context: vscode.ExtensionContext) 
     const { shortcutsToAdd, shortcutsToRemove } = await getShortcutsFromConfiguration();
     shortcutsToAdd.forEach((shortcut) => manager.addShortcut(shortcut));
     shortcutsToRemove.forEach((shortcut) => manager.removeShortcut(shortcut));
+    manager.groupImportantShortcuts();
+    manager.restoreImportantShortcuts();
     setShortcuts(context, manager.shortcuts);
     console.timeEnd(timeLabel);
   }
+  await reloadAllShortcuts();
 
   const configChangeListener = vscode.workspace.onDidChangeConfiguration(async (e) => {
     console.log('Config has changed');
     await reloadAllShortcuts();
   });
+
+  const resetShortcutsCommand = vscode.commands.registerCommand(
+    'shortcut-quiz.resetShortcuts',
+    async () => {
+      // only for debugging
+      context.globalState.update('shortcuts', {});
+      context.globalState.update('shortcutsGrouped', false);
+      await reloadAllShortcuts();
+    },
+  );
 
   const userShortcutsWatcher = vscode.workspace.createFileSystemWatcher(
     new vscode.RelativePattern(getUserShortcutsFileUri(true).fsPath, 'keybindings.json'),
@@ -251,7 +304,7 @@ export async function getShortcutsDisposables(context: vscode.ExtensionContext) 
     setTimeout(() => reloadAllShortcuts(), 10000);
   });
 
-  function updateCommandImportance(item: CommandTreeItem, importance: boolean) {
+  function updateCommandImportance(item: MainCommandTreeItem, importance: boolean) {
     updateShortcuts(context, (shortcuts) => {
       if (shortcuts[item.commandString]) {
         shortcuts[item.commandString].important = importance;
@@ -264,14 +317,12 @@ export async function getShortcutsDisposables(context: vscode.ExtensionContext) 
 
   const starCommandCommand = vscode.commands.registerCommand(
     'shortcut-quiz.starCommand',
-    (item: CommandTreeItem) => updateCommandImportance(item, true),
+    (item: MainCommandTreeItem) => updateCommandImportance(item, true),
   );
   const unstarCommandCommand = vscode.commands.registerCommand(
     'shortcut-quiz.unstarCommand',
-    (item: CommandTreeItem) => updateCommandImportance(item, false),
+    (item: MainCommandTreeItem) => updateCommandImportance(item, false),
   );
-
-  await reloadAllShortcuts();
 
   return [
     configChangeListener,
@@ -279,5 +330,6 @@ export async function getShortcutsDisposables(context: vscode.ExtensionContext) 
     userShortcutsWatcher,
     starCommandCommand,
     unstarCommandCommand,
+    resetShortcutsCommand,
   ];
 }

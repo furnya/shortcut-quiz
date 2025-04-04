@@ -17,11 +17,9 @@ enum Priority {
 type TaskFilter = 'all' | 'active' | 'completed';
 class StateManager<T> {
   private items: T[] = [];
-
   add(item: T): void {
     this.items.push(item);
   }
-
   getAll(): readonly T[] {
     return [...this.items];
   }

@@ -38,10 +38,13 @@ export interface KeyMappings {
   };
 }
 
-export interface QuizShortcut {
+export interface QuizShortcutNonRecursive {
   title: string;
   keys: string[];
   command: string;
+}
+export interface QuizShortcut extends QuizShortcutNonRecursive {
+  relatedShortcuts: QuizShortcutNonRecursive[];
 }
 
 export interface PlaygroundClosedMessage {

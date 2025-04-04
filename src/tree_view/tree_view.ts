@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { getShortcuts } from '../shortcuts/shortcuts';
 import { Shortcut } from '../shortcuts/types';
-import { CommandTreeItem, GenericShortcutTreeItem } from './tree_item';
+import { GenericShortcutTreeItem, MainCommandTreeItem } from './tree_item';
 
 abstract class SCTProvider implements vscode.TreeDataProvider<GenericShortcutTreeItem> {
   constructor(protected readonly context: vscode.ExtensionContext) {}
@@ -33,7 +33,9 @@ abstract class SCTProvider implements vscode.TreeDataProvider<GenericShortcutTre
           }
           return keyA.localeCompare(keyB);
         })
-        .map(([key, value]) => new CommandTreeItem(this.context, key, value, this.collapseCommand));
+        .map(
+          ([key, value]) => new MainCommandTreeItem(this.context, key, value, this.collapseCommand),
+        );
     }
     return element.children;
   }

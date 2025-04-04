@@ -95,6 +95,10 @@
     },
     "commands": [
       {
+        "command": "shortcut-quiz.resetShortcuts",
+        "title": "Reload Shortcuts"
+      },
+      {
         "command": "shortcut-quiz.startNewQuiz",
         "title": "Start New Shortcut Quiz",
         "icon": "assets/new_quiz.svg"
@@ -153,6 +157,18 @@
           "type": "number",
           "default": 60,
           "description": "Interval in minutes between quizzes"
+        },
+        "shortcutQuiz.numberOfQuestions": {
+          "type": "number",
+          "default": 10,
+          "description": "Number of questions in each quiz",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "shortcutQuiz.showPlayground": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to show the playground editor for quizzes"
         },
         "shortcutQuiz.keyboardLayout": {
           "type": "string",

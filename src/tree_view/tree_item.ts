@@ -1,7 +1,7 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { TreeItemCollapsibleState } from 'vscode';
-import { Shortcut } from '../shortcuts/types';
+import { Shortcut, ShortcutNonRecursive, ShortcutsNonRecursive } from '../shortcuts/types';
 
 export class GenericShortcutTreeItem extends vscode.TreeItem {
   public children: GenericShortcutTreeItem[] = [];
@@ -15,11 +15,10 @@ export class GenericShortcutTreeItem extends vscode.TreeItem {
 }
 
 export class CommandTreeItem extends GenericShortcutTreeItem {
-  public readonly commandString: string;
   constructor(
     context: vscode.ExtensionContext,
     command: string,
-    value: Shortcut,
+    value: ShortcutNonRecursive,
     public readonly collapseCommand: boolean = false,
   ) {
     const label = value.title
@@ -29,14 +28,38 @@ export class CommandTreeItem extends GenericShortcutTreeItem {
       label,
       collapseCommand ? TreeItemCollapsibleState.Collapsed : TreeItemCollapsibleState.Expanded,
     );
-    this.commandString = command;
-    this.contextValue = 'command';
     this.description = command;
     this.children = [
       ...Object.entries(value.keys).map(([k, v]) => new ShortcutTreeItem(context, k, v)),
-      new ScoreTreeItem(value.learningState),
       new OriginsTreeItem(value.origins),
     ];
+  }
+}
+
+export class MainCommandTreeItem extends CommandTreeItem {
+  public readonly commandString: string;
+  constructor(
+    context: vscode.ExtensionContext,
+    command: string,
+    value: Shortcut,
+    public readonly collapseCommand: boolean = false,
+  ) {
+    super(context, command, value, collapseCommand);
+    this.commandString = command;
+    this.contextValue = 'command';
+    this.children.push(new ScoreTreeItem(value.learningState));
+    if (value.relatedShortcuts) {
+      this.children.push(new RelatedShortcutsTreeItem(context, value.relatedShortcuts));
+    }
+  }
+}
+
+export class RelatedShortcutsTreeItem extends GenericShortcutTreeItem {
+  constructor(context: vscode.ExtensionContext, shortcuts: ShortcutsNonRecursive) {
+    super('Related Shortcuts', TreeItemCollapsibleState.Collapsed);
+    this.children.push(
+      ...Object.entries(shortcuts).map(([k, v]) => new CommandTreeItem(context, k, v, true)),
+    );
   }
 }
 
