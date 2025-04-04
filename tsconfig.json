@@ -12,5 +12,6 @@
     // "noUnusedParameters": true,  /* Report errors on unused parameters. */
     "jsx": "react-jsx",
     "jsxImportSource": "preact"
-  }
+  },
+  "exclude": ["data"]
 }
