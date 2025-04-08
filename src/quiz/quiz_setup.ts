@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as fsAsync from 'fs/promises';
 import * as path from 'path';
+// eslint-disable-next-line @typescript-eslint/naming-convention
 import _ from 'lodash';
 import { getShortcuts, updateShortcuts } from '../shortcuts/shortcuts';
 import { Shortcut } from '../shortcuts/types';

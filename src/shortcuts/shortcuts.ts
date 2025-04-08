@@ -224,7 +224,9 @@ async function getUserShortcutsJson(): Promise<string> {
 
 export async function getShortcutsFromConfiguration() {
   const fileContent = await getUserShortcutsJson();
-  const userShortcuts = JSON.parse(fileContent.toString()) as ShortcutImport[];
+  const userShortcuts = JSON.parse(
+    fileContent.toString().replace(/\/\/.*$/gm, ''),
+  ) as ShortcutImport[];
   const shortcutsToAdd = userShortcuts
     .filter((shortcut) => !shortcut.command.startsWith('-'))
     .map((shortcut) => ({ ...shortcut, origin: 'user' }));
