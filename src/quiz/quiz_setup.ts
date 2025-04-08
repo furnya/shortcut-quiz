@@ -14,11 +14,18 @@ import {
   ShortcutAnswerMessage,
 } from './types';
 
+let quizPanel: vscode.WebviewPanel | null = null;
+let playgroundEditor: vscode.TextEditor | null = null;
+
 async function openQuizEditor(
   context: vscode.ExtensionContext,
   shortcutSelection: [string, Shortcut][] = [],
 ) {
-  const panel = vscode.window.createWebviewPanel(
+  if (quizPanel) {
+    quizPanel.reveal();
+    return;
+  }
+  quizPanel = vscode.window.createWebviewPanel(
     'shortcutQuiz',
     'Shortcut Quiz',
     vscode.ViewColumn.One,
@@ -28,21 +35,27 @@ async function openQuizEditor(
       localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'dist')],
     },
   );
+  quizPanel.onDidDispose(() => {
+    quizPanel = null;
+    if (playgroundEditor) {
+      closePlayground();
+    }
+  });
 
   const keyMappingsPath = path.join(context.extensionPath, 'data', 'key_mappings.json');
   const keyMappingsJson = await fsAsync.readFile(keyMappingsPath, 'utf8');
   const keyMappings = JSON.parse(keyMappingsJson) as KeyMappings;
 
-  const stylesUri = panel.webview.asWebviewUri(
+  const stylesUri = quizPanel.webview.asWebviewUri(
     // vscode.Uri.joinPath(context.extensionUri, 'src', 'quiz', 'styles.css'),
     vscode.Uri.joinPath(context.extensionUri, 'dist', 'quiz', 'styles.css'),
   );
-  const scriptUri = panel.webview.asWebviewUri(
+  const scriptUri = quizPanel.webview.asWebviewUri(
     // vscode.Uri.joinPath(context.extensionUri, 'src', 'quiz', 'script.js'),
     vscode.Uri.joinPath(context.extensionUri, 'dist', 'quiz', 'index.js'),
   );
 
-  panel.webview.html = /*html*/ `
+  quizPanel.webview.html = /*html*/ `
   <!DOCTYPE html>
   <html lang="en">
     <head>
@@ -74,36 +87,14 @@ async function openQuizEditor(
       configKeyboardLanguage:
         vscode.workspace.getConfiguration('shortcutQuiz').get('keyboardLayout') ?? 'en',
     };
-    panel.webview.postMessage(message);
+    quizPanel?.webview.postMessage(message);
   }
-  let playgroundEditor: vscode.TextEditor | null = null;
   if (vscode.workspace.getConfiguration('shortcutQuiz').get('showPlayground')) {
-    playgroundEditor = await openPlayground(context);
+    await openPlayground(context);
     vscode.commands.executeCommand('workbench.action.evenEditorWidths');
-    panel.webview.postMessage({ command: 'playgroundOpened' } as PlaygroundOpenedMessage);
+    quizPanel.webview.postMessage({ command: 'playgroundOpened' } as PlaygroundOpenedMessage);
   }
-  function closePlayground() {
-    if (!playgroundEditor) {
-      return;
-    }
-    // empty document
-    playgroundEditor.edit((edit) => {
-      edit.replace(new vscode.Range(0, 0, playgroundEditor?.document.lineCount ?? 100_000, 0), '');
-    });
-    const foundTabGroup = vscode.window.tabGroups.all.find(
-      (tg) => tg.viewColumn === playgroundEditor?.viewColumn,
-    );
-    const foundTab = foundTabGroup?.tabs.find(
-      (t) => (t.input as vscode.TabInputText)?.uri.fsPath === playgroundEditor?.document.uri.fsPath,
-    );
-    if (!foundTab) {
-      return;
-    }
-    vscode.window.tabGroups.close(foundTab);
-    playgroundEditor = null;
-    panel.webview.postMessage({ command: 'playgroundClosed' } as PlaygroundClosedMessage);
-  }
-  panel.webview.onDidReceiveMessage(async (message: IncomingMessage) => {
+  quizPanel.webview.onDidReceiveMessage(async (message: IncomingMessage) => {
     if (message.command === 'shortcutAnswer') {
       const typedMessage = message as ShortcutAnswerMessage;
       updateShortcuts(context, (shortcuts) => {
@@ -116,11 +107,11 @@ async function openQuizEditor(
     } else if (message.command === 'closePlayground') {
       closePlayground();
     } else if (message.command === 'openPlayground') {
-      playgroundEditor = await openPlayground(context);
-      panel.webview.postMessage({ command: 'playgroundOpened' } as PlaygroundOpenedMessage);
+      await openPlayground(context);
+      quizPanel?.webview.postMessage({ command: 'playgroundOpened' } as PlaygroundOpenedMessage);
     } else if (message.command === 'quit') {
       closePlayground();
-      panel.dispose();
+      quizPanel?.dispose();
     }
   });
 }
@@ -134,7 +125,29 @@ async function openPlayground(context: vscode.ExtensionContext) {
     content: sampleContent,
     language: 'typescript',
   });
-  return await vscode.window.showTextDocument(document, vscode.ViewColumn.Beside, true);
+  playgroundEditor = await vscode.window.showTextDocument(document, vscode.ViewColumn.Beside, true);
+}
+
+function closePlayground() {
+  if (!playgroundEditor) {
+    return;
+  }
+  // empty document
+  playgroundEditor.edit((edit) => {
+    edit.replace(new vscode.Range(0, 0, playgroundEditor?.document.lineCount ?? 100_000, 0), '');
+  });
+  const foundTabGroup = vscode.window.tabGroups.all.find(
+    (tg) => tg.viewColumn === playgroundEditor?.viewColumn,
+  );
+  const foundTab = foundTabGroup?.tabs.find(
+    (t) => (t.input as vscode.TabInputText)?.uri.fsPath === playgroundEditor?.document.uri.fsPath,
+  );
+  if (!foundTab) {
+    return;
+  }
+  vscode.window.tabGroups.close(foundTab);
+  playgroundEditor = null;
+  quizPanel?.webview.postMessage({ command: 'playgroundClosed' } as PlaygroundClosedMessage);
 }
 
 export async function checkAndShowEditor(context: vscode.ExtensionContext) {
@@ -179,5 +192,13 @@ export function getQuizDisposables(context: vscode.ExtensionContext) {
       await openQuizEditor(context, selection);
     },
   );
-  return [startNewQuizCommand];
+
+  const documentCloseListener = vscode.workspace.onDidCloseTextDocument((document) => {
+    if (playgroundEditor && document.uri.toString() === playgroundEditor.document.uri.toString()) {
+      playgroundEditor = null;
+      quizPanel?.webview.postMessage({ command: 'playgroundClosed' } as PlaygroundClosedMessage);
+    }
+  });
+
+  return [startNewQuizCommand, documentCloseListener];
 }
