@@ -1,7 +1,12 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { TreeItemCollapsibleState } from 'vscode';
-import { Shortcut, ShortcutNonRecursive, ShortcutsNonRecursive } from '../shortcuts/types';
+import {
+  Keybinding,
+  Shortcut,
+  ShortcutNonRecursive,
+  ShortcutsNonRecursive,
+} from '../shortcuts/types';
 
 export class GenericShortcutTreeItem extends vscode.TreeItem {
   public children: GenericShortcutTreeItem[] = [];
@@ -15,11 +20,13 @@ export class GenericShortcutTreeItem extends vscode.TreeItem {
 }
 
 export class CommandTreeItem extends GenericShortcutTreeItem {
+  public readonly commandString: string;
   constructor(
     context: vscode.ExtensionContext,
     command: string,
     value: ShortcutNonRecursive,
     public readonly collapseCommand: boolean = false,
+    public readonly isMainCommand: boolean = false,
   ) {
     const label = value.title
       ? value.title.charAt(0).toUpperCase() + value.title.slice(1)
@@ -28,24 +35,25 @@ export class CommandTreeItem extends GenericShortcutTreeItem {
       label,
       collapseCommand ? TreeItemCollapsibleState.Collapsed : TreeItemCollapsibleState.Expanded,
     );
+    this.commandString = command;
     this.description = command;
     this.children = [
-      ...Object.entries(value.keys).map(([k, v]) => new ShortcutTreeItem(context, k, v)),
+      ...Object.entries(value.keybindings).map(
+        ([k, v]) => new ShortcutTreeItem(context, this, k, v),
+      ),
       new OriginsTreeItem(value.origins),
     ];
   }
 }
 
 export class MainCommandTreeItem extends CommandTreeItem {
-  public readonly commandString: string;
   constructor(
     context: vscode.ExtensionContext,
     command: string,
     value: Shortcut,
     public readonly collapseCommand: boolean = false,
   ) {
-    super(context, command, value, collapseCommand);
-    this.commandString = command;
+    super(context, command, value, collapseCommand, true);
     this.contextValue = 'command';
     this.children.push(new ScoreTreeItem(value.learningState));
     if (value.relatedShortcuts) {
@@ -78,16 +86,31 @@ export class OriginsTreeItem extends GenericShortcutTreeItem {
 export class ShortcutTreeItem extends GenericShortcutTreeItem {
   constructor(
     context: vscode.ExtensionContext,
+    public readonly parent: CommandTreeItem,
     public readonly key: string,
-    public readonly value: string[] | null,
+    public readonly value: Keybinding,
   ) {
     let collapsibleState = TreeItemCollapsibleState.Collapsed;
-    if (value === null) {
+    if (value.conditions === undefined) {
       collapsibleState = TreeItemCollapsibleState.None;
     }
-    super(key, collapsibleState);
-    this.iconPath = vscode.Uri.file(path.join(context.extensionPath, 'assets', 'keyboard.svg'));
-    this.children = (value || []).map((v) => new WhenTreeItem(context, v));
+    let label = key;
+    if (value.conditions !== undefined && parent.isMainCommand && !value.enabled) {
+      label = '[disabled] ' + key;
+    }
+    super(label, collapsibleState);
+    this.iconPath = vscode.Uri.file(
+      path.join(context.extensionPath, 'assets', 'keyboard_green.svg'),
+    );
+    if (value.disablingPossible) {
+      if (value.enabled) {
+        this.contextValue = 'enabledKeybinding';
+      } else {
+        this.contextValue = 'disabledKeybinding';
+        this.iconPath = vscode.Uri.file(path.join(context.extensionPath, 'assets', 'keyboard.svg'));
+      }
+    }
+    this.children = (value.conditions || []).map((v) => new WhenTreeItem(context, v));
   }
 }
 

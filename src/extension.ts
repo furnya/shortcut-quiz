@@ -9,8 +9,6 @@ export async function activate(context: vscode.ExtensionContext) {
   console.log('The extension "shortcut-quiz" is now active!');
 
   // TODO group commands by category
-  // TODO group commands by similarity (arrowup/arrowdown commands can be combined)
-  // TODO titles for defaults
 
   const quizDisposables = getQuizDisposables(context);
   const shortcutsDisposables = await getShortcutsDisposables(context);
@@ -29,6 +27,7 @@ export async function activate(context: vscode.ExtensionContext) {
     ...quizDisposables,
     ...shortcutsDisposables,
   );
+
   // only for testing
   // vscode.commands.executeCommand('shortcut-quiz.startNewQuiz');
   quizInterval = setInterval(async () => checkAndShowEditor(context), 30 * 1000);

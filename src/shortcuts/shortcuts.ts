@@ -2,18 +2,21 @@ import * as fs from 'fs';
 import * as fsAsync from 'fs/promises';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { MainCommandTreeItem } from '../tree_view/tree_item';
-import { ShortcutImport, ShortcutNonRecursive, Shortcuts } from './types';
+import { MainCommandTreeItem, ShortcutTreeItem } from '../tree_view/tree_item';
+import { PreselectedShortcuts, ShortcutImport, ShortcutNonRecursive, Shortcuts } from './types';
 
-export const importantShortcutsKey = 'importantShortcuts';
+export const preselectedShortcutsKey = 'preselectedShortcuts';
 export const shortcutsKey = 'shortcuts';
 
-function getImportantShortcuts(context: vscode.ExtensionContext): string[][] {
-  return context.globalState.get<string[][]>(importantShortcutsKey) ?? [];
+function getPreselectedShortcuts(context: vscode.ExtensionContext): PreselectedShortcuts {
+  return context.globalState.get<PreselectedShortcuts>(preselectedShortcutsKey) ?? {};
 }
 
-function setImportantShortcuts(context: vscode.ExtensionContext, shortcuts: string[]) {
-  context.globalState.update(importantShortcutsKey, shortcuts);
+function setPreselectedShortcuts(
+  context: vscode.ExtensionContext,
+  shortcuts: PreselectedShortcuts,
+) {
+  context.globalState.update(preselectedShortcutsKey, shortcuts);
 }
 
 export function getShortcuts(context: vscode.ExtensionContext): Shortcuts {
@@ -21,7 +24,7 @@ export function getShortcuts(context: vscode.ExtensionContext): Shortcuts {
 }
 
 function setShortcuts(context: vscode.ExtensionContext, shortcuts: Shortcuts) {
-  context.globalState.update(shortcutsKey, shortcuts);
+  return context.globalState.update(shortcutsKey, shortcuts);
 }
 
 export function updateShortcuts(
@@ -30,18 +33,17 @@ export function updateShortcuts(
 ) {
   const shortcuts = getShortcuts(context);
   const newShortcuts = updateFn(shortcuts);
-  setShortcuts(context, newShortcuts);
+  return setShortcuts(context, newShortcuts);
 }
 
-export async function loadImportantShortcuts(context: vscode.ExtensionContext) {
-  const importantShortcutsPath = path.join(
+export async function loadPreselectedShortcuts(context: vscode.ExtensionContext) {
+  const preselectedShortcutsPath = path.join(
     context.extensionPath,
     'data',
     'shortcut_selection.json',
   );
-  const importantShortcutsJson = await fsAsync.readFile(importantShortcutsPath, 'utf8');
-  const importantShortcuts = JSON.parse(importantShortcutsJson) as string[];
-  setImportantShortcuts(context, importantShortcuts);
+  const preselectedShortcutsJson = await fsAsync.readFile(preselectedShortcutsPath, 'utf8');
+  setPreselectedShortcuts(context, JSON.parse(preselectedShortcutsJson) as PreselectedShortcuts);
 }
 
 function normalizeKey(key: string) {
@@ -67,24 +69,31 @@ function normalizeKey(key: string) {
 }
 
 class ShortcutLoadManager {
-  private importantShortcuts: string[][];
-  private backupImportantCommands: { command: string; important: boolean }[] = [];
+  private preselectedShortcuts: PreselectedShortcuts;
+  private backupEnabledCommands: {
+    command: string;
+    enabled: boolean;
+    enabledConditions: string[];
+  }[] = [];
   constructor(
     public shortcuts: Shortcuts,
     context: vscode.ExtensionContext,
   ) {
-    this.importantShortcuts = getImportantShortcuts(context);
+    this.preselectedShortcuts = getPreselectedShortcuts(context);
   }
 
   resetKeys() {
-    this.backupImportantCommands = Object.entries(this.shortcuts).map(([command, shortcut]) => ({
+    this.backupEnabledCommands = Object.entries(this.shortcuts).map(([command, shortcut]) => ({
       command,
-      important: shortcut.important,
+      enabled: shortcut.enabled,
+      enabledConditions: Object.values(shortcut.keybindings)
+        .filter((k) => k.enabled)
+        .flatMap((k) => k.conditions ?? []),
     }));
     this.shortcuts = {};
   }
 
-  addShortcut({ command, key, when, title, origin }: ShortcutImport) {
+  addShortcut({ command, key, when, title, title_ai, origin }: ShortcutImport) {
     const normalizedKey = normalizeKey(key);
     let existingShortcut: ShortcutNonRecursive | undefined = this.shortcuts[command];
     if (!existingShortcut) {
@@ -96,7 +105,7 @@ class ShortcutLoadManager {
       }
     }
     if (!existingShortcut) {
-      let finalTitle = title;
+      let finalTitle = title || title_ai;
       if (!finalTitle) {
         finalTitle =
           command
@@ -107,26 +116,37 @@ class ShortcutLoadManager {
       }
       this.shortcuts[command] = {
         title: finalTitle.trim(),
-        keys: {
-          [normalizeKey(normalizedKey)]: when ? [when] : null,
+        keybindings: {
+          [normalizeKey(normalizedKey)]: {
+            enabled: true,
+            conditions: when ? [when] : undefined,
+            disablingPossible: false,
+          },
         },
         learningState: 0,
         origins: origin ? [origin] : [],
-        important: false,
+        enabled: false,
       };
     } else {
       if (origin && !existingShortcut.origins.includes(origin)) {
         existingShortcut.origins.push(origin);
       }
-      if (!existingShortcut.keys[normalizedKey]) {
-        existingShortcut.keys[normalizedKey] = when ? [when] : null;
+      if (!existingShortcut.keybindings[normalizedKey]) {
+        existingShortcut.keybindings[normalizedKey] = {
+          enabled: true,
+          conditions: when ? [when] : undefined,
+          disablingPossible: false,
+        };
       } else {
-        if (
+        const keybindings = existingShortcut.keybindings[normalizedKey];
+        if (!when) {
+          keybindings.conditions = undefined;
+        } else if (
           when &&
-          existingShortcut.keys[normalizedKey] &&
-          !existingShortcut.keys[normalizedKey].includes(when)
+          keybindings.conditions !== undefined &&
+          !keybindings.conditions.includes(when)
         ) {
-          existingShortcut.keys[normalizedKey].push(when);
+          keybindings.conditions.push(when);
         }
       }
     }
@@ -138,43 +158,87 @@ class ShortcutLoadManager {
     }
     const normalizedKey = normalizeKey(key);
     const existingShortcut = this.shortcuts[command];
-    if (!existingShortcut.keys[normalizedKey]) {
+    if (!existingShortcut.keybindings[normalizedKey]) {
       return;
     }
     if (when) {
-      existingShortcut.keys[normalizedKey] = existingShortcut.keys[normalizedKey].filter(
-        (w: string) => w !== when,
-      );
+      existingShortcut.keybindings[normalizedKey].conditions = existingShortcut.keybindings[
+        normalizedKey
+      ].conditions?.filter((condition) => condition !== when);
     } else {
-      delete existingShortcut.keys[normalizedKey];
+      delete existingShortcut.keybindings[normalizedKey];
     }
   }
 
-  groupImportantShortcuts() {
-    this.importantShortcuts.forEach((group) => {
-      const mainCommand = group[0];
-      const mainShortcut = this.shortcuts[mainCommand];
-      mainShortcut.important = true;
-      group.slice(1).forEach((command) => {
-        const shortcut = this.shortcuts[command];
-        if (shortcut) {
-          mainShortcut.relatedShortcuts = mainShortcut.relatedShortcuts || {};
-          mainShortcut.relatedShortcuts[command] = {
-            title: shortcut.title,
-            keys: shortcut.keys,
-            origins: shortcut.origins,
-          };
-          delete this.shortcuts[command];
+  computeEnabledKeybindings() {
+    Object.values(this.shortcuts).forEach((shortcut) => {
+      const keybindingsWithConditions = Object.values(shortcut.keybindings).filter(
+        (keybinding) => keybinding.conditions !== undefined,
+      );
+      const keybindingsWithoutConditions = Object.values(shortcut.keybindings).filter(
+        (keybinding) => keybinding.conditions === undefined,
+      );
+      keybindingsWithConditions.forEach((keybinding) => {
+        if (Object.values(shortcut.keybindings).length > 1) {
+          keybinding.disablingPossible = true;
+        }
+        if (keybindingsWithoutConditions.length > 0) {
+          keybinding.enabled = false;
         }
       });
     });
   }
 
-  restoreImportantShortcuts() {
-    this.backupImportantCommands.forEach(({ command, important }) => {
+  groupEnabledShortcuts() {
+    Object.keys(this.preselectedShortcuts).forEach((mainCommand) => {
+      const mainShortcut = this.shortcuts[mainCommand];
+      mainShortcut.enabled = true;
+      this.preselectedShortcuts[mainCommand].relatedShortcuts?.forEach((command) => {
+        const shortcut = this.shortcuts[command];
+        if (shortcut) {
+          Object.values(shortcut.keybindings).forEach((keybinding) => {
+            keybinding.enabled = true;
+            keybinding.disablingPossible = false;
+          });
+          mainShortcut.relatedShortcuts = mainShortcut.relatedShortcuts || {};
+          mainShortcut.relatedShortcuts[command] = {
+            title: shortcut.title,
+            keybindings: shortcut.keybindings,
+            origins: shortcut.origins,
+          };
+          delete this.shortcuts[command];
+        }
+      });
+      if (this.preselectedShortcuts[mainCommand].preferredConditions) {
+        Object.values(mainShortcut.keybindings)
+          .filter((keybinding) => keybinding.conditions !== undefined)
+          .forEach((keybinding) => {
+            keybinding.enabled = false;
+            if (
+              this.preselectedShortcuts[mainCommand].preferredConditions!.some((condition) =>
+                keybinding.conditions!.includes(condition),
+              )
+            ) {
+              keybinding.enabled = true;
+            }
+          });
+      }
+    });
+  }
+
+  restoreEnabledShortcuts() {
+    this.backupEnabledCommands.forEach(({ command, enabled, enabledConditions }) => {
       const shortcut = this.shortcuts[command];
       if (shortcut) {
-        shortcut.important = important;
+        shortcut.enabled = enabled;
+        Object.values(shortcut.keybindings)
+          .filter((keybinding) => keybinding.conditions !== undefined)
+          .forEach((keybinding) => {
+            keybinding.enabled = false;
+            if (enabledConditions.some((condition) => keybinding.conditions!.includes(condition))) {
+              keybinding.enabled = true;
+            }
+          });
       }
     });
   }
@@ -253,7 +317,7 @@ export function getShortcutsFromExtensions() {
 }
 
 export async function getShortcutsDisposables(context: vscode.ExtensionContext) {
-  await loadImportantShortcuts(context);
+  await loadPreselectedShortcuts(context);
 
   async function reloadAllShortcuts() {
     const timeLabel = 'loadShortcuts_' + new Date().toISOString();
@@ -268,9 +332,10 @@ export async function getShortcutsDisposables(context: vscode.ExtensionContext) 
     const { shortcutsToAdd, shortcutsToRemove } = await getShortcutsFromConfiguration();
     shortcutsToAdd.forEach((shortcut) => manager.addShortcut(shortcut));
     shortcutsToRemove.forEach((shortcut) => manager.removeShortcut(shortcut));
-    manager.groupImportantShortcuts();
-    manager.restoreImportantShortcuts();
-    setShortcuts(context, manager.shortcuts);
+    manager.computeEnabledKeybindings();
+    manager.groupEnabledShortcuts();
+    manager.restoreEnabledShortcuts();
+    await setShortcuts(context, manager.shortcuts);
     console.timeEnd(timeLabel);
   }
   await reloadAllShortcuts();
@@ -309,8 +374,18 @@ export async function getShortcutsDisposables(context: vscode.ExtensionContext) 
   function updateCommandImportance(item: MainCommandTreeItem, importance: boolean) {
     updateShortcuts(context, (shortcuts) => {
       if (shortcuts[item.commandString]) {
-        shortcuts[item.commandString].important = importance;
+        shortcuts[item.commandString].enabled = importance;
       }
+      return shortcuts;
+    });
+    vscode.commands.executeCommand('shortcut-quiz.refreshActiveTreeView');
+    vscode.commands.executeCommand('shortcut-quiz.refreshInactiveTreeView');
+  }
+  function updateConditionImportance(item: ShortcutTreeItem, importance: boolean) {
+    updateShortcuts(context, (shortcuts) => {
+      const command = item.parent.commandString;
+      const key = item.key;
+      shortcuts[command].keybindings[key].enabled = importance;
       return shortcuts;
     });
     vscode.commands.executeCommand('shortcut-quiz.refreshActiveTreeView');
@@ -325,6 +400,14 @@ export async function getShortcutsDisposables(context: vscode.ExtensionContext) 
     'shortcut-quiz.unstarCommand',
     (item: MainCommandTreeItem) => updateCommandImportance(item, false),
   );
+  const starKeybindingCommand = vscode.commands.registerCommand(
+    'shortcut-quiz.starKeybinding',
+    (item: ShortcutTreeItem) => updateConditionImportance(item, true),
+  );
+  const unstarKeybindingCommand = vscode.commands.registerCommand(
+    'shortcut-quiz.unstarKeybinding',
+    (item: ShortcutTreeItem) => updateConditionImportance(item, false),
+  );
 
   return [
     configChangeListener,
@@ -333,5 +416,7 @@ export async function getShortcutsDisposables(context: vscode.ExtensionContext) 
     starCommandCommand,
     unstarCommandCommand,
     resetShortcutsCommand,
+    starKeybindingCommand,
+    unstarKeybindingCommand,
   ];
 }

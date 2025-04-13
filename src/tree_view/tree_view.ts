@@ -42,13 +42,13 @@ abstract class SCTProvider implements vscode.TreeDataProvider<GenericShortcutTre
 }
 export class ShortcutInactiveTreeDataProvider extends SCTProvider {
   protected filterCondition(shortcut: Shortcut): boolean {
-    return !shortcut.important;
+    return !shortcut.enabled;
   }
   protected collapseCommand = true;
 }
 export class ShortcutActiveTreeDataProvider extends SCTProvider {
   protected filterCondition(shortcut: Shortcut): boolean {
-    return shortcut.important;
+    return shortcut.enabled;
   }
   protected collapseCommand = false;
 }

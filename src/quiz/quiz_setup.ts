@@ -4,14 +4,16 @@ import * as path from 'path';
 // eslint-disable-next-line @typescript-eslint/naming-convention
 import _ from 'lodash';
 import { getShortcuts, updateShortcuts } from '../shortcuts/shortcuts';
-import { Shortcut } from '../shortcuts/types';
+import { Keybindings, Shortcut } from '../shortcuts/types';
 import {
   IncomingMessage,
+  Keybinding,
   KeyMappings,
   PlaygroundClosedMessage,
   PlaygroundOpenedMessage,
   SetShortcutsMessage,
   ShortcutAnswerMessage,
+  UpdateKeybindingMessage,
 } from './types';
 
 let quizPanel: vscode.WebviewPanel | null = null;
@@ -71,15 +73,23 @@ async function openQuizEditor(
   </html>`;
 
   function sendStartMessage() {
+    function mapKeybindings(keybindings: Keybindings): Keybinding[] {
+      return Object.entries(keybindings).map(([key, value]) => ({
+        key,
+        enabled: value.enabled,
+        disablingPossible: value.disablingPossible,
+        conditions: value.conditions,
+      }));
+    }
     const message: SetShortcutsMessage = {
       command: 'setShortcuts',
       shortcuts: shortcutSelection.map(([k, s]) => ({
         title: s.title,
-        keys: Object.keys(s.keys),
+        keys: mapKeybindings(s.keybindings),
         command: k,
         relatedShortcuts: Object.entries(s.relatedShortcuts ?? {}).map(([command, value]) => ({
           title: value.title,
-          keys: Object.keys(value.keys),
+          keys: mapKeybindings(value.keybindings),
           command,
         })),
       })),
@@ -112,6 +122,17 @@ async function openQuizEditor(
     } else if (message.command === 'quit') {
       closePlayground();
       quizPanel?.dispose();
+    } else if (message.command === 'updateKeybinding') {
+      const typedMessage = message as UpdateKeybindingMessage;
+      await updateShortcuts(context, (shortcuts) => {
+        const shortcut = shortcuts[typedMessage.shortcutCommand];
+        if (shortcut) {
+          shortcut.keybindings[typedMessage.key].enabled = typedMessage.enable;
+        }
+        return shortcuts;
+      });
+      vscode.commands.executeCommand('shortcut-quiz.refreshActiveTreeView');
+      vscode.commands.executeCommand('shortcut-quiz.refreshInactiveTreeView');
     }
   });
 }
@@ -177,7 +198,7 @@ export function getQuizDisposables(context: vscode.ExtensionContext) {
       const numberOfQuestions = vscode.workspace
         .getConfiguration('shortcutQuiz')
         .get<number>('numberOfQuestions', 10);
-      let selection = Object.entries(shortcuts).filter(([k, s]) => s.important);
+      let selection = Object.entries(shortcuts).filter(([k, s]) => s.enabled);
       _.shuffle(selection);
       // selection = selection.sort((a, b) => a[1].learningState - b[1].learningState);
       selection = _.sortBy(selection, (s) => s[1].learningState);

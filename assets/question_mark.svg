@@ -5,7 +5,7 @@
 
   <!-- Light bulb icon -->
   
-    <g transform="matrix(20 0 0 20 400 440)">
+    <g transform="matrix(18 0 0 18 400 440)">
       <text xml:space="preserve" font-family="Lato, Arial, sans-serif" font-size="40" font-weight="400" style="fill: rgb(208,208,208);">
         <tspan x="-8.95" y="12.57">?</tspan>
       </text>

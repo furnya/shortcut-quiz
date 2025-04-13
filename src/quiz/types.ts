@@ -19,12 +19,20 @@ export interface QuitMessage {
   command: 'quit';
 }
 
+export interface UpdateKeybindingMessage {
+  command: 'updateKeybinding';
+  key: string;
+  enable: boolean;
+  shortcutCommand: string;
+}
+
 export type IncomingMessage =
   | ReadyMessage
   | ShortcutAnswerMessage
   | ClosePlaygroundMessage
   | OpenPlaygroundMessage
-  | QuitMessage;
+  | QuitMessage
+  | UpdateKeybindingMessage;
 
 export interface DisplayKeys {
   de: string;
@@ -38,9 +46,16 @@ export interface KeyMappings {
   };
 }
 
+export interface Keybinding {
+  key: string;
+  enabled: boolean;
+  disablingPossible: boolean;
+  conditions?: string[];
+}
+
 export interface QuizShortcutNonRecursive {
   title: string;
-  keys: string[];
+  keys: Keybinding[];
   command: string;
 }
 export interface QuizShortcut extends QuizShortcutNonRecursive {

@@ -90,6 +90,16 @@
           "command": "shortcut-quiz.starCommand",
           "when": "view == shortcutQuizShortcutTreeViewInactive && viewItem == command",
           "group": "inline"
+        },
+        {
+          "command": "shortcut-quiz.unstarKeybinding",
+          "when": "(view == shortcutQuizShortcutTreeViewActive || view == shortcutQuizShortcutTreeViewInactive) && viewItem == enabledKeybinding",
+          "group": "inline"
+        },
+        {
+          "command": "shortcut-quiz.starKeybinding",
+          "when": "(view == shortcutQuizShortcutTreeViewActive || view == shortcutQuizShortcutTreeViewInactive) && viewItem == disabledKeybinding",
+          "group": "inline"
         }
       ]
     },
@@ -111,6 +121,16 @@
       {
         "command": "shortcut-quiz.unstarCommand",
         "title": "Deactivate Command for Shortcut Quiz",
+        "icon": "assets/star_strikethrough.svg"
+      },
+      {
+        "command": "shortcut-quiz.starKeybinding",
+        "title": "Enable Keybinding for Shortcut Quiz",
+        "icon": "assets/star.svg"
+      },
+      {
+        "command": "shortcut-quiz.unstarKeybinding",
+        "title": "Disable Keybinding for Shortcut Quiz",
         "icon": "assets/star_strikethrough.svg"
       },
       {

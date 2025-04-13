@@ -4,7 +4,7 @@ body {
     color: var(--vscode-foreground);
     background-color: var(--vscode-editor-background);
     padding: 20px;
-    max-width: 800px;
+    max-width: max(80vw, 800px);
     margin: 0 auto;
     height: calc(100vh - 40px);
 }
@@ -24,6 +24,8 @@ body {
 
 .question {
     font-size: 1.2em;
+    margin-bottom: 15px;
+    font-size: 20px;
     /* margin-bottom: 20px; */
 }
 
@@ -32,7 +34,6 @@ body {
     align-items: center;
     gap: 4px;
     flex-wrap: wrap;
-    margin-top: 5px;
 }
 
 .key {
@@ -46,28 +47,38 @@ body {
 
 .answer {
     font-size: 20px;
-    margin-top: 20px;
-    padding: 15px;
-    border-left: 4px solid var(--vscode-activityBarBadge-background);
-    background-color: var(--vscode-editor-inactiveSelectionBackground);
+    margin-bottom: 20px;
+    overflow: auto;
 }
 
-/* button {
-    background: var(--vscode-button-background);
-    color: var(--vscode-button-foreground);
-    border: none;
-    padding: 8px 12px;
-    cursor: pointer;
-    margin-right: 10px;
-    margin-top: 10px;
-  } */
+.command-title {
+    font-family: Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace;
+}
+.command-command {
+    font-style: italic;
+}
 
-/* button:hover {
-    background: var(--vscode-button-hoverBackground);
-  } */
+.related-shortcuts {
+    border: 1px solid #ccc;
+    padding: 10px;
+    border-radius: 5px;
+}
+.related-shortcuts summary {
+    cursor: pointer;
+}
+
+.related-shortcuts .related-shortcuts-list {
+    padding-left: 20px;
+}
+
+.shortcuts-table {
+    margin-top: 5px;
+    margin-bottom: 10px;
+    padding: 15px;
+    background-color: var(--vscode-editor-rangeHighlightBackground);
+}
 
 .progress {
-    margin-bottom: 10px;
     display: flex;
     justify-content: space-between;
     font-size: 0.9em;
@@ -75,25 +86,17 @@ body {
 }
 
 .feedback {
-    margin-top: 15px;
-    height: 20px;
+    margin-bottom: 10px;
     animation: fade-in 0.3s ease-in-out forwards;
-    /* opacity: 1; */
-    /* transition: opacity 10s ease-in-out, transform 10s ease-in-out; */
-    /* transition: opacity 10s ease-in-out; */
+    font-size: 20px;
 }
 
 .feedback.incorrect {
-    /* animation: fade-in 10s ease-in-out forwards; */
     animation: fadeInOut 6s ease-in-out forwards;
 }
-
-/* .feedback.fade-out {
-    opacity: 0;
-    transform: translateY(-10px);
-    height: 0;
-    margin-top: 0;
-  } */
+.feedback.correct {
+    margin-top: 5px;
+}
 
 @keyframes fade-in {
     from {
@@ -142,13 +145,11 @@ body {
     display: inline-block;
     padding: 2px 6px;
     margin: 0 2px;
-    /* font-family: 'Courier New', monospace; */
     font-family: Arial, sans-serif;
     font-size: 0.9em;
     font-weight: bold;
     color: #2c2c2c;
     background-color: #c0c0c0;
-    border: none;
     border-top: 5px solid #e0e0e0;
     border-left: 5px solid #e0e0e0;
     border-bottom: 5px solid #808080;
@@ -158,19 +159,43 @@ body {
     text-shadow: 1px 1px 1px rgba(255, 255, 255, 0.3);
     user-select: none;
     cursor: default;
-    /* transition: all 0.1s ease; */
-    /* font-size: 40px; */
 }
 
-.keyboard-key:hover,
-.keyboard-key.active {
+.feedback.correct .keyboard-key {
+    background-color: var(--vscode-testing-iconPassed);
+    border-top-color: #91d4a8;
+    border-left-color: #91d4a8;
+    border-bottom-color: #3b975b;
+    border-right-color: #3b975b;
+}
+
+.disable-button {
+    width: 75px;
+}
+
+.keyboard-key-connector {
+    font-weight: bold;
+}
+
+.keyboard-key:hover:not(:disabled),
+.keyboard-key.active:not(:disabled) {
     transform: translate(2px, 2px);
-    border-top: 4px solid #e0e0e0;
-    border-left: 4px solid #e0e0e0;
-    border-bottom: 4px solid #808080;
-    border-right: 4px solid #808080;
+    border-top-width: 4px;
+    border-left-width: 4px;
+    border-bottom-width: 4px;
+    border-right-width: 4px;
     margin: 1px 3px;
     box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.keyboard-key:disabled {
+    background-color: #e0e0e0;
+    color: #a0a0a0;
+    border-top-color: #a0a0a0;
+    border-left-color: #a0a0a0;
+    border-bottom-color: #808080;
+    border-right-color: #808080;
+    cursor: not-allowed;
 }
 
 .playground-button {
@@ -179,4 +204,68 @@ body {
     right: 0;
     margin-right: 20px;
     margin-top: 20px;
+}
+
+.grid-layout {
+    font-size: 15px;
+    display: grid;
+    grid-template-columns: 1.33fr 0.67fr 80px 105px;
+    width: 100%;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.grid-layout thead,
+.grid-layout tbody,
+.grid-layout tr {
+    display: contents;
+}
+
+.grid-layout th,
+.grid-layout td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #ccc;
+    border-right: 1px solid #ccc;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+}
+
+.grid-layout th:last-child,
+.grid-layout td:last-child {
+    border-right: none;
+}
+.grid-layout th:nth-child(3),
+.grid-layout td:nth-child(3) {
+    padding: 10px 0;
+}
+
+.grid-layout > *:nth-last-child(-n + 4) {
+    border-bottom: none;
+}
+
+.grid-layout th {
+    font-weight: bold;
+}
+
+.grid-layout th:nth-child(3),
+.grid-layout td:nth-child(3),
+.grid-layout th:nth-child(4),
+.grid-layout td:nth-child(4) {
+    text-align: center;
+    justify-content: center;
+}
+
+.grid-layout td button {
+    padding: 4px 8px;
+    cursor: pointer;
+}
+
+.footer {
+    display: flex;
+    justify-content: space-between;
 }

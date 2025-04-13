@@ -3,17 +3,34 @@ export interface ShortcutImport {
   key: string;
   when?: string;
   title?: string;
+  title_ai?: string;
   origin?: string;
+}
+export interface PreselectedShortcuts {
+  [command: string]: {
+    relatedShortcuts?: string[];
+    preferredConditions?: string[];
+  };
+}
+
+export interface Keybinding {
+  enabled: boolean;
+  disablingPossible: boolean;
+  conditions?: string[];
+}
+
+export interface Keybindings {
+  [key: string]: Keybinding;
 }
 
 export interface ShortcutNonRecursive {
   title: string;
-  keys: { [key: string]: string[] | null };
+  keybindings: Keybindings;
   origins: string[];
 }
 export interface Shortcut extends ShortcutNonRecursive {
   relatedShortcuts?: ShortcutsNonRecursive;
-  important: boolean;
+  enabled: boolean;
   learningState: number;
 }
 
