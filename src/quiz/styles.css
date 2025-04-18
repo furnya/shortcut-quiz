@@ -59,8 +59,6 @@ body {
 }
 
 .related-shortcuts {
-    border: 1px solid #ccc;
-    padding: 10px;
     border-radius: 5px;
 }
 .related-shortcuts summary {
@@ -68,13 +66,12 @@ body {
 }
 
 .related-shortcuts .related-shortcuts-list {
-    padding-left: 20px;
 }
 
 .shortcuts-table {
     margin-top: 5px;
     margin-bottom: 10px;
-    padding: 15px;
+    padding: 8px;
     background-color: var(--vscode-editor-rangeHighlightBackground);
 }
 
@@ -83,10 +80,11 @@ body {
     justify-content: space-between;
     font-size: 0.9em;
     color: var(--vscode-descriptionForeground);
+    min-height: 30px;
 }
 
 .feedback {
-    margin-bottom: 10px;
+    margin-bottom: 15px;
     animation: fade-in 0.3s ease-in-out forwards;
     font-size: 20px;
 }
@@ -94,8 +92,13 @@ body {
 .feedback.incorrect {
     animation: fadeInOut 6s ease-in-out forwards;
 }
-.feedback.correct {
-    margin-top: 5px;
+.correct {
+    color: var(--vscode-testing-iconPassed);
+}
+
+.incorrect,
+.wrongTriesExceeded {
+    color: var(--vscode-testing-iconFailed);
 }
 
 @keyframes fade-in {
@@ -126,14 +129,6 @@ body {
         opacity: 0;
         transform: translateY(-10px);
     }
-}
-
-.correct {
-    color: var(--vscode-testing-iconPassed);
-}
-
-.incorrect {
-    color: var(--vscode-testing-iconFailed);
 }
 
 .completion {
@@ -207,9 +202,9 @@ body {
 }
 
 .grid-layout {
-    font-size: 15px;
+    font-size: 14px;
     display: grid;
-    grid-template-columns: 1.33fr 0.67fr 80px 105px;
+    grid-template-columns: 1.33fr 0.67fr 105px;
     width: 100%;
     border: 1px solid #ccc;
     border-radius: 4px;
@@ -224,7 +219,7 @@ body {
 
 .grid-layout th,
 .grid-layout td {
-    padding: 10px 12px;
+    padding: 5px 10px;
     border-bottom: 1px solid #ccc;
     border-right: 1px solid #ccc;
     text-align: left;
@@ -233,6 +228,7 @@ body {
     min-width: 0;
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 .grid-layout th:last-child,

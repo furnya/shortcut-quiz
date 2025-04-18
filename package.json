@@ -106,6 +106,10 @@
     "commands": [
       {
         "command": "shortcut-quiz.resetShortcuts",
+        "title": "Reset Shortcuts to Default"
+      },
+      {
+        "command": "shortcut-quiz.reloadShortcuts",
         "title": "Reload Shortcuts"
       },
       {
@@ -182,6 +186,13 @@
           "type": "number",
           "default": 10,
           "description": "Number of questions in each quiz",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "shortcutQuiz.maxWrongTries": {
+          "type": "number",
+          "default": 10,
+          "description": "Maximum number of wrong tries before the answer is revealed",
           "minimum": 1,
           "maximum": 100
         },

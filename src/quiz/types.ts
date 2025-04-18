@@ -73,6 +73,7 @@ export interface SetShortcutsMessage {
   configKeyboardLanguage: 'en' | 'de';
   shortcuts: QuizShortcut[];
   keyMappings: KeyMappings;
+  maxWrongTries: number;
 }
 export type OutgoingMessage =
   | SetShortcutsMessage

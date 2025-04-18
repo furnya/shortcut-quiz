@@ -96,6 +96,9 @@ async function openQuizEditor(
       keyMappings,
       configKeyboardLanguage:
         vscode.workspace.getConfiguration('shortcutQuiz').get('keyboardLayout') ?? 'en',
+      maxWrongTries: vscode.workspace
+        .getConfiguration('shortcutQuiz')
+        .get<number>('maxWrongTries', 10),
     };
     quizPanel?.webview.postMessage(message);
   }

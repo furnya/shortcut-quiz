@@ -1,5 +1,4 @@
 import { h, render, Component, Fragment } from 'preact';
-import htm from 'htm';
 import {
   DisplayKeys,
   IncomingMessage,
@@ -9,7 +8,6 @@ import {
   QuizShortcutNonRecursive,
 } from './types';
 
-const html = htm.bind(h);
 declare function acquireVsCodeApi(): any;
 const vscode: {
   postMessage: (message: IncomingMessage) => void;
@@ -26,6 +24,8 @@ interface ShortcutQuizState {
   currentEnabledSteps: ShortcutSteps[];
   currentRelatedShortcuts: { command: string; title: string; steps: ShortcutSteps[] }[];
   currentCapturedSteps: ShortcutStep[] | null;
+  currentWrongTries: number;
+  lastWrongTry: KeyboardEvent | null;
   showAnswer: boolean;
   isComplete: boolean;
   isFadingOut: boolean;
@@ -54,6 +54,7 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
   feedbackTimer: null;
   fadeOutTimer: null;
   previousFeedbackKey: number;
+  maxWrongTries = 10;
   constructor(props: {}) {
     super(props);
     this.state = {
@@ -72,6 +73,8 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
       feedbackKey: 0,
       playgroundOpen: false,
       correctCounter: 0,
+      currentWrongTries: 0,
+      lastWrongTry: null,
     };
     this.feedbackTimer = null;
     this.fadeOutTimer = null;
@@ -102,6 +105,7 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
     if (message.command === 'setShortcuts') {
       configKeyboardLanguage = message.configKeyboardLanguage;
       keyMappings = message.keyMappings;
+      this.maxWrongTries = message.maxWrongTries;
       this.initializeShortcuts(message.shortcuts);
       window.focus();
     } else if (message.command === 'playgroundOpened') {
@@ -152,9 +156,11 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
       currentEnabledSteps,
       currentStepIndices: currentEnabledSteps.map((_) => 0),
       currentRelatedShortcuts: currentRelatedShortcuts,
+      currentWrongTries: 0,
       currentCapturedSteps: null,
       feedback: null,
       showAnswer: false,
+      lastWrongTry: null,
     });
   }
 
@@ -207,7 +213,7 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
     );
     if (keyIndex >= 0) {
       pressedKeys.splice(keyIndex, 1);
-      this.setState({ pressedKeys }, () => {
+      this.setState({ pressedKeys, lastWrongTry: null }, () => {
         console.debug('Pressed keys:', structuredClone(this.state.pressedKeys));
       });
     }
@@ -217,7 +223,15 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
     console.debug('Keydown event:', event);
     event.preventDefault();
     event.stopPropagation();
-    const { currentStepIndices, currentEnabledSteps, showAnswer, pressedKeys } = this.state;
+    const {
+      currentStepIndices,
+      currentEnabledSteps,
+      showAnswer,
+      pressedKeys,
+      isComplete,
+      currentWrongTries,
+      lastWrongTry,
+    } = this.state;
     const { key: pressedKey, keyCode: pressedKeyCode } = this.getKeyAndKeyCode(event);
     console.debug('Pressed key, code:', pressedKey, pressedKeyCode);
     if (!pressedKeys.some((k) => k.key === pressedKey && k.keyCode === pressedKeyCode)) {
@@ -231,6 +245,28 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
       );
     }
 
+    if (isComplete) {
+      if (
+        event.key === 'Enter' &&
+        event.ctrlKey &&
+        !event.shiftKey &&
+        !event.altKey &&
+        !event.metaKey
+      ) {
+        this.handleRestart();
+      }
+      if (
+        event.key === 'w' &&
+        event.ctrlKey &&
+        !event.shiftKey &&
+        !event.altKey &&
+        !event.metaKey
+      ) {
+        this.quit();
+      }
+      return;
+    }
+
     // If answer is already showing, don't process keypresses
     if (showAnswer) {
       if (
@@ -242,6 +278,19 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
       ) {
         this.handleNext();
       }
+      return;
+    }
+
+    if (
+      lastWrongTry &&
+      event.key === lastWrongTry.key &&
+      event.code === lastWrongTry.code &&
+      event.ctrlKey === lastWrongTry.ctrlKey &&
+      event.shiftKey === lastWrongTry.shiftKey &&
+      event.altKey === lastWrongTry.altKey &&
+      event.metaKey === lastWrongTry.metaKey
+    ) {
+      console.debug('Last wrong try matched:', lastWrongTry);
       return;
     }
 
@@ -289,12 +338,18 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
       if (this.fadeOutTimer) {
         clearTimeout(this.fadeOutTimer);
       }
-      // Reset on incorrect key
-      this.setState({
-        currentStepIndices: newCurrentStep,
-        feedback: { type: 'incorrect' },
-        feedbackKey: this.state.feedbackKey + 1, // Increment key to force re-render
-      });
+      if (currentWrongTries >= this.maxWrongTries - 1) {
+        this.handleShowAnswer(true);
+      } else {
+        // Reset on incorrect key
+        this.setState({
+          currentStepIndices: newCurrentStep,
+          feedback: { type: 'incorrect' },
+          feedbackKey: this.state.feedbackKey + 1, // Increment key to force re-render
+          currentWrongTries: currentWrongTries + 1,
+          lastWrongTry: event,
+        });
+      }
     }
   };
 
@@ -316,13 +371,13 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
     });
   };
 
-  handleShowAnswer = () => {
+  handleShowAnswer = (fromWrongTry = false) => {
     const { shortcuts, currentShortcutIndex } = this.state;
     const current = shortcuts[currentShortcutIndex];
 
     this.setState({
       showAnswer: true,
-      feedback: null,
+      feedback: fromWrongTry ? { type: 'wrongTriesExceeded' } : null,
     });
 
     vscode.postMessage({
@@ -338,7 +393,11 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
 
     if (nextIndex >= shortcuts.length) {
       // Quiz complete
-      this.setState({ isComplete: true });
+      this.setState({
+        isComplete: true,
+        feedback: null,
+        showAnswer: false,
+      });
       return;
     }
     this.selectShortcutByIndex(nextIndex);
@@ -395,8 +454,7 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
             <tr>
               <th>Key(s)</th>
               <th>Conditions</th>
-              <th title="Enabled for Quiz">Enabled*</th>
-              <th></th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody>
@@ -411,15 +469,16 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
                     </Fragment>
                   ))}
                 </td>
-                <td>{s.enabled ? 'Yes' : 'No'}</td>
                 <td>
-                  <button
-                    class="keyboard-key disable-button"
-                    onClick={() => this.sendUpdateKeybindingMessage(s, subCommand)}
-                    disabled={s.disablingPossible ? false : true}
-                  >
-                    {s.enabled ? 'Disable' : 'Enable'}
-                  </button>
+                  <span style="margin-bottom: 5px">{s.enabled ? 'Enabled' : 'Disabled'}</span>
+                  {s.disablingPossible && (
+                    <button
+                      class="keyboard-key disable-button"
+                      onClick={() => this.sendUpdateKeybindingMessage(s, subCommand)}
+                    >
+                      {s.enabled ? 'Disable' : 'Enable'}
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -434,7 +493,10 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
         {formatSteps(currentPossibleSteps, command)}
         {currentRelatedShortcuts.length > 0 && (
           <details open class="related-shortcuts">
-            <summary>Related Shortcuts:</summary>
+            <summary>
+              Related Shortcuts
+              <hr />
+            </summary>
             <div class="related-shortcuts-list">
               {currentRelatedShortcuts.map((r, rIndex) => (
                 <div>
@@ -464,12 +526,13 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
   renderFeedback = () => {
     const { feedback, feedbackKey, currentCapturedSteps } = this.state;
 
-    if (!feedback) return null;
+    if (!feedback) return <div></div>;
 
     const feedbackText = {
       correct: 'Correct!',
       incorrect: 'Incorrect key, try again!',
       progress: 'Keep going...',
+      wrongTriesExceeded: `You've pressed the wrong key ${this.maxWrongTries} times!`,
     }[feedback.type];
     return (
       <div
@@ -491,24 +554,28 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
     const { shortcuts, currentShortcutIndex, showAnswer, isComplete, playgroundOpen } = this.state;
 
     if (shortcuts.length === 0) {
-      return html`<div>Loading...</div>`;
+      return <div>Loading...</div>;
     }
 
     if (isComplete) {
-      return html`
+      return (
         <div class="completion">
           <h2>Quiz Complete!</h2>
           <p>You've finished the keyboard shortcuts quiz.</p>
           <p>
-            You've answered ${this.state.correctCounter} out of ${shortcuts.length} questions
+            You've answered {this.state.correctCounter} out of {shortcuts.length} questions
             correctly.
           </p>
-          <button class="keyboard-key" onClick=${this.handleRestart}>Start Over</button>
+          <button class="keyboard-key" onClick={this.handleRestart}>
+            Start Over (Ctrl+Enter)
+          </button>
           <br />
           <br />
-          <button class="keyboard-key" onClick=${this.quit}>Quit</button>
+          <button class="keyboard-key" onClick={this.quit}>
+            Quit (Ctrl+W)
+          </button>
         </div>
-      `;
+      );
     }
 
     const current = shortcuts[currentShortcutIndex];
@@ -519,16 +586,13 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
           <span>
             Question {currentShortcutIndex + 1}/{shortcuts.length}
           </span>
-          <button class="keyboard-key" onClick={() => this.sendPlaygroundMessage(playgroundOpen)}>
-            {playgroundOpen ? 'Close' : 'Open'} Editor Playground →
-          </button>
+          {this.renderFeedback()}
         </div>
         {!showAnswer && (
           <div class="question">
             What is the shortcut for {this.renderCommand(current.title, current.command)}?
           </div>
         )}
-        {this.renderFeedback()}
         {showAnswer && this.renderKeyboardHint(current.title, current.command)}
         <div class="flex-spacer"></div>
         <div class="footer">
@@ -548,6 +612,9 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
               Next Question (Ctrl+Enter)
             </button>
           )}
+          <button class="keyboard-key" onClick={() => this.sendPlaygroundMessage(playgroundOpen)}>
+            {playgroundOpen ? 'Close' : 'Open'} Editor Playground →
+          </button>
         </div>
       </div>
     );

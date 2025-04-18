@@ -74,6 +74,7 @@ class ShortcutLoadManager {
     command: string;
     enabled: boolean;
     enabledConditions: string[];
+    learningState: number;
   }[] = [];
   constructor(
     public shortcuts: Shortcuts,
@@ -91,6 +92,7 @@ class ShortcutLoadManager {
         enabledConditions: Object.values(shortcut.keybindings)
           .filter((k) => k.enabled)
           .flatMap((k) => k.conditions ?? []),
+        learningState: shortcut.learningState,
       }));
     } catch (error) {
       console.error('Error while resetting keys:', error);
@@ -260,9 +262,10 @@ class ShortcutLoadManager {
   }
 
   restoreEnabledShortcuts() {
-    this.backupEnabledCommands.forEach(({ command, enabled, enabledConditions }) => {
+    this.backupEnabledCommands.forEach(({ command, enabled, enabledConditions, learningState }) => {
       const shortcut = this.shortcuts[command];
       if (shortcut) {
+        shortcut.learningState = learningState;
         shortcut.enabled = enabled;
         Object.values(shortcut.keybindings)
           .filter((keybinding) => keybinding.conditions !== undefined)
@@ -397,6 +400,12 @@ export async function getShortcutsDisposables(context: vscode.ExtensionContext) 
       await reloadAllShortcuts();
     },
   );
+  const reloadShortcutsCommand = vscode.commands.registerCommand(
+    'shortcut-quiz.reloadShortcuts',
+    async () => {
+      await reloadAllShortcuts();
+    },
+  );
 
   const userShortcutsWatcher = vscode.workspace.createFileSystemWatcher(
     new vscode.RelativePattern(getUserShortcutsFileUri(true).fsPath, 'keybindings.json'),
@@ -459,6 +468,7 @@ export async function getShortcutsDisposables(context: vscode.ExtensionContext) 
     starCommandCommand,
     unstarCommandCommand,
     resetShortcutsCommand,
+    reloadShortcutsCommand,
     starKeybindingCommand,
     unstarKeybindingCommand,
   ];
