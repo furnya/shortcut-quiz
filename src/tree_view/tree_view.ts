@@ -13,7 +13,9 @@ abstract class SCTProvider implements vscode.TreeDataProvider<GenericShortcutTre
   protected abstract filterCondition(shortcut: Shortcut): boolean;
   protected abstract collapseCommand: boolean;
   refresh() {
-    this._onDidChangeTreeData.fire(undefined);
+    vscode.commands.executeCommand('shortcut-quiz.resetShortcuts').then(() => {
+      this._onDidChangeTreeData.fire(undefined);
+    });
   }
 
   getTreeItem(element: GenericShortcutTreeItem): vscode.TreeItem {
