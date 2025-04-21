@@ -4,9 +4,9 @@
             "editor.action.copyLinesUpAction"
         ]
     },
-    "editor.action.insertCursorBelow": {
+    "editor.action.insertCursorAbove": {
         "relatedShortcuts": [
-            "editor.action.insertCursorAbove"
+            "editor.action.insertCursorBelow"
         ]
     },
     "editor.action.moveLinesDownAction": {
