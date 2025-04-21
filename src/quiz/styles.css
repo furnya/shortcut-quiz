@@ -75,18 +75,19 @@ body {
     background-color: var(--vscode-editor-rangeHighlightBackground);
 }
 
-.progress {
+.progress-container {
     display: flex;
     justify-content: space-between;
     font-size: 0.9em;
     color: var(--vscode-descriptionForeground);
     min-height: 30px;
+    margin-bottom: 15px;
 }
 
 .feedback {
-    margin-bottom: 15px;
     animation: fade-in 0.3s ease-in-out forwards;
     font-size: 20px;
+    height: 30px;
 }
 
 .feedback.incorrect {

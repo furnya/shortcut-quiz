@@ -425,16 +425,24 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
     return pressedKeys.find((k) => k.key === key || k.keyCode === key) ? 'active' : '';
   }
 
-  renderKeybinding(keybinding: ShortcutStep[]) {
+  renderKeybinding(keybinding: ShortcutStep[], scaleDown = false) {
     return keybinding.map((step, stepIndex) => (
       <Fragment key={stepIndex}>
         {step.modifiers.map((key, i) => (
           <Fragment key={i}>
-            <span className={`keyboard-key ${this.getActive(key)}`}>{key}</span>
+            <span
+              className={`keyboard-key ${this.getActive(key)}`}
+              style={{ transform: scaleDown ? 'scale(calc(30/35))' : 'scale(1)' }}
+            >
+              {key}
+            </span>
             <span class="keyboard-key-connector">+</span>
           </Fragment>
         ))}
-        <span className={`keyboard-key ${this.getActive(step.key)}`}>
+        <span
+          className={`keyboard-key ${this.getActive(step.key)}`}
+          style={{ transform: scaleDown ? 'scale(calc(30/35))' : 'scale(1)' }}
+        >
           {step.displayKeys?.[configKeyboardLanguage] ?? step.key}
         </span>
         {stepIndex < keybinding.length - 1 && <span class="keyboard-key-connector"> then </span>}
@@ -543,7 +551,7 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
         {feedback.type === 'correct' && (
           <span class="captured-shortcut">
             {' '}
-            You pressed: {this.renderKeybinding(currentCapturedSteps ?? [])}
+            You pressed: {this.renderKeybinding(currentCapturedSteps ?? [], true)}
           </span>
         )}
       </div>
@@ -582,7 +590,7 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
 
     return (
       <div class="app-main">
-        <div class="progress">
+        <div class="progress-container">
           <span>
             Question {currentShortcutIndex + 1}/{shortcuts.length}
           </span>

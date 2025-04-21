@@ -59,9 +59,9 @@
             "workbench.action.quickOpenLeastRecentlyUsedEditorInGroup"
         ]
     },
-    "workbench.action.navigateForward": {
+    "workbench.action.navigateBack": {
         "relatedShortcuts": [
-            "workbench.action.navigateBack"
+            "workbench.action.navigateForward"
         ]
     },
     "actions.find": {},
