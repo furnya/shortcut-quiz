@@ -164,7 +164,7 @@ function closePlayground() {
     (tg) => tg.viewColumn === playgroundEditor?.viewColumn,
   );
   const foundTab = foundTabGroup?.tabs.find(
-    (t) => (t.input as vscode.TabInputText)?.uri.fsPath === playgroundEditor?.document.uri.fsPath,
+    (t) => (t.input as vscode.TabInputText)?.uri?.fsPath === playgroundEditor?.document?.uri?.fsPath,
   );
   if (!foundTab) {
     return;
