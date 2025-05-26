@@ -55,6 +55,7 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
   fadeOutTimer: null;
   previousFeedbackKey: number;
   maxWrongTries = 10;
+  availableClips: string[] = [];
   constructor(props: {}) {
     super(props);
     this.state = {
@@ -85,7 +86,12 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
     window.addEventListener('message', this.handleMessage);
     document.addEventListener('keydown', this.handleKeydown);
     document.addEventListener('keyup', this.handleKeyup);
-    vscode.postMessage({ command: 'ready' });
+    fetch('https://api.github.com/repos/furnya/shortcut-quiz/contents/assets/clips')
+      .then((response) => response.json())
+      .then((data) => {
+        this.availableClips = data.map((file: { name: string }) => file.name);
+        vscode.postMessage({ command: 'ready' });
+      });
   }
 
   componentWillUnmount() {
@@ -596,11 +602,25 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
           </span>
           {this.renderFeedback()}
         </div>
-        {!showAnswer && (
-          <div class="question">
-            What is the shortcut for {this.renderCommand(current.title, current.command)}?
-          </div>
-        )}
+        <div class={`question-container ${showAnswer ? 'answer-shown' : ''}`}>
+          {!showAnswer && (
+            <div class="question">
+              What is the shortcut for {this.renderCommand(current.title, current.command)}?
+            </div>
+          )}
+          {current.command && this.availableClips.includes(`${current.command}.mp4`) && (
+            <details open class="video-details">
+              <summary>Video</summary>
+              <video controls autoplay loop muted key={current.command}>
+                <source
+                  src={`https://github.com/furnya/shortcut-quiz/raw/refs/heads/main/assets/clips/${current.command}.mp4`}
+                  type="video/mp4"
+                />
+                No video available for this shortcut.
+              </video>
+            </details>
+          )}
+        </div>
         {showAnswer && this.renderKeyboardHint(current.title, current.command)}
         <div class="flex-spacer"></div>
         <div class="footer">

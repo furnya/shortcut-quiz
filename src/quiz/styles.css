@@ -29,6 +29,19 @@ body {
     /* margin-bottom: 20px; */
 }
 
+.question-container {
+    display: flex;
+    flex-wrap: wrap;
+}
+.question-container > * {
+    width: 100%;
+}
+@media (min-width: 1201px) {
+    .question-container:not(.answer-shown) > * {
+        width: 50%;
+    }
+}
+
 .keyboard-hint {
     display: flex;
     align-items: center;
@@ -81,7 +94,6 @@ body {
     font-size: 0.9em;
     color: var(--vscode-descriptionForeground);
     min-height: 30px;
-    margin-bottom: 15px;
 }
 
 .feedback {
@@ -265,4 +277,18 @@ body {
 .footer {
     display: flex;
     justify-content: space-between;
+}
+
+.video-details summary {
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 20px;
+    padding: 5px;
+}
+
+.video-details {
+    max-height: 437px;
+}
+.video-details > video {
+    max-height: 400px;
 }
