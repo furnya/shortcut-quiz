@@ -39,7 +39,14 @@ export class CommandTreeItem extends GenericShortcutTreeItem {
     this.description = command;
     this.children = [
       ...Object.entries(value.keybindings).map(
-        ([k, v]) => new ShortcutTreeItem(context, this, k, v),
+        ([k, v]) =>
+          new ShortcutTreeItem(
+            context,
+            this,
+            k,
+            v,
+            Object.values(value.keybindings).filter((kb) => kb.enabled).length > 1,
+          ),
       ),
       new OriginsTreeItem(value.origins),
     ];
@@ -89,6 +96,7 @@ export class ShortcutTreeItem extends GenericShortcutTreeItem {
     public readonly parent: CommandTreeItem,
     public readonly key: string,
     public readonly value: Keybinding,
+    public readonly moreThanOneEnabled: boolean,
   ) {
     let collapsibleState = TreeItemCollapsibleState.Collapsed;
     if (value.conditions === undefined) {
@@ -104,7 +112,9 @@ export class ShortcutTreeItem extends GenericShortcutTreeItem {
     );
     if (value.disablingPossible) {
       if (value.enabled) {
-        this.contextValue = 'enabledKeybinding';
+        if (moreThanOneEnabled) {
+          this.contextValue = 'enabledKeybinding';
+        }
       } else {
         this.contextValue = 'disabledKeybinding';
         this.iconPath = vscode.Uri.file(path.join(context.extensionPath, 'assets', 'keyboard.svg'));

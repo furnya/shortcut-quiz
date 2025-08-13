@@ -12,10 +12,14 @@ abstract class SCTProvider implements vscode.TreeDataProvider<GenericShortcutTre
   sortOrder: 'alphabetical' | 'learningState' = 'alphabetical';
   protected abstract filterCondition(shortcut: Shortcut): boolean;
   protected abstract collapseCommand: boolean;
-  refresh() {
-    vscode.commands.executeCommand('shortcut-quiz.reloadShortcuts').then(() => {
+  refresh(reloadShortcuts = true) {
+    if (reloadShortcuts) {
+      vscode.commands.executeCommand('shortcut-quiz.reloadShortcuts').then(() => {
+        this._onDidChangeTreeData.fire(undefined);
+      });
+    } else {
       this._onDidChangeTreeData.fire(undefined);
-    });
+    }
   }
 
   getTreeItem(element: GenericShortcutTreeItem): vscode.TreeItem {
@@ -69,14 +73,14 @@ export function getTreeViewDisposables(context: vscode.ExtensionContext) {
 
   const refreshActiveTreeCommand = vscode.commands.registerCommand(
     'shortcut-quiz.refreshActiveTreeView',
-    async () => {
-      shortcutActiveTreeDataProvider.refresh();
+    async (reloadShortcuts = true) => {
+      shortcutActiveTreeDataProvider.refresh(reloadShortcuts);
     },
   );
   const refreshInactiveTreeCommand = vscode.commands.registerCommand(
     'shortcut-quiz.refreshInactiveTreeView',
-    async () => {
-      shortcutInactiveTreeDataProvider.refresh();
+    async (reloadShortcuts = true) => {
+      shortcutInactiveTreeDataProvider.refresh(reloadShortcuts);
     },
   );
   const sortActiveTreeAlphabeticallyCommand = vscode.commands.registerCommand(

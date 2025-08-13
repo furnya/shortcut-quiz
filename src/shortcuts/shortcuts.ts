@@ -73,7 +73,7 @@ class ShortcutLoadManager {
   private backupEnabledCommands: {
     command: string;
     enabled: boolean;
-    enabledConditions: string[];
+    enabledConditions: [string, string[]][];
     learningState: number;
   }[] = [];
   constructor(
@@ -89,9 +89,9 @@ class ShortcutLoadManager {
       this.backupEnabledCommands = Object.entries(this.shortcuts).map(([command, shortcut]) => ({
         command,
         enabled: shortcut.enabled,
-        enabledConditions: Object.values(shortcut.keybindings)
-          .filter((k) => k.enabled)
-          .flatMap((k) => k.conditions ?? []),
+        enabledConditions: Object.entries(shortcut.keybindings)
+          .filter(([k, v]) => v.enabled)
+          .map(([k, v]) => [k, v.conditions ?? []]),
         learningState: shortcut.learningState,
       }));
     } catch (error) {
@@ -267,11 +267,16 @@ class ShortcutLoadManager {
       if (shortcut) {
         shortcut.learningState = learningState;
         shortcut.enabled = enabled;
-        Object.values(shortcut.keybindings)
-          .filter((keybinding) => keybinding.conditions !== undefined)
-          .forEach((keybinding) => {
+        Object.entries(shortcut.keybindings)
+          .filter(([key, keybinding]) => keybinding.conditions !== undefined)
+          .forEach(([key, keybinding]) => {
             keybinding.enabled = false;
-            if (enabledConditions.some((condition) => keybinding.conditions!.includes(condition))) {
+            if (
+              enabledConditions.some(
+                ([condKey, conditions]) =>
+                  key === condKey && keybinding.conditions?.every((c) => conditions.includes(c)),
+              )
+            ) {
               keybinding.enabled = true;
             }
           });
@@ -430,8 +435,8 @@ export async function getShortcutsDisposables(context: vscode.ExtensionContext) 
       }
       return shortcuts;
     });
-    vscode.commands.executeCommand('shortcut-quiz.refreshActiveTreeView');
-    vscode.commands.executeCommand('shortcut-quiz.refreshInactiveTreeView');
+    vscode.commands.executeCommand('shortcut-quiz.refreshActiveTreeView', false);
+    vscode.commands.executeCommand('shortcut-quiz.refreshInactiveTreeView', false);
   }
   function updateConditionImportance(item: ShortcutTreeItem, importance: boolean) {
     updateShortcuts(context, (shortcuts) => {
@@ -439,9 +444,10 @@ export async function getShortcutsDisposables(context: vscode.ExtensionContext) 
       const key = item.key;
       shortcuts[command].keybindings[key].enabled = importance;
       return shortcuts;
+    }).then(() => {
+      vscode.commands.executeCommand('shortcut-quiz.refreshActiveTreeView', false);
+      vscode.commands.executeCommand('shortcut-quiz.refreshInactiveTreeView', false);
     });
-    vscode.commands.executeCommand('shortcut-quiz.refreshActiveTreeView');
-    vscode.commands.executeCommand('shortcut-quiz.refreshInactiveTreeView');
   }
 
   const starCommandCommand = vscode.commands.registerCommand(

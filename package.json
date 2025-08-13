@@ -201,6 +201,21 @@
           "default": true,
           "description": "Whether to show the playground editor for quizzes"
         },
+        "shortcutQuiz.quizSelection": {
+          "type": "string",
+          "default": "lowest_score",
+          "enum": [
+            "lowest_score",
+            "random",
+            "mixed"
+          ],
+          "enumItemLabels": [
+            "By lowest score",
+            "Random",
+            "Mixed (50% from lowest score, 50% random)"
+          ],
+          "description": "How to select the shortcuts for the next quiz"
+        },
         "shortcutQuiz.keyboardLayout": {
           "type": "string",
           "default": "en",

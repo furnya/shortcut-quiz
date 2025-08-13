@@ -21,7 +21,7 @@ export interface QuitMessage {
 
 export interface UpdateKeybindingMessage {
   command: 'updateKeybinding';
-  key: string;
+  key?: string;
   enable: boolean;
   shortcutCommand: string;
 }
@@ -60,6 +60,7 @@ export interface QuizShortcutNonRecursive {
 }
 export interface QuizShortcut extends QuizShortcutNonRecursive {
   relatedShortcuts: QuizShortcutNonRecursive[];
+  enabled: boolean;
 }
 
 export interface PlaygroundClosedMessage {
@@ -74,6 +75,7 @@ export interface SetShortcutsMessage {
   shortcuts: QuizShortcut[];
   keyMappings: KeyMappings;
   maxWrongTries: number;
+  debug?: boolean;
 }
 export type OutgoingMessage =
   | SetShortcutsMessage

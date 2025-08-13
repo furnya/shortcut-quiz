@@ -83,10 +83,12 @@ async function openQuizEditor(
     }
     const message: SetShortcutsMessage = {
       command: 'setShortcuts',
+      debug: context.extensionMode === vscode.ExtensionMode.Development,
       shortcuts: shortcutSelection.map(([k, s]) => ({
         title: s.title,
         keys: mapKeybindings(s.keybindings),
         command: k,
+        enabled: s.enabled,
         relatedShortcuts: Object.entries(s.relatedShortcuts ?? {}).map(([command, value]) => ({
           title: value.title,
           keys: mapKeybindings(value.keybindings),
@@ -130,12 +132,16 @@ async function openQuizEditor(
       await updateShortcuts(context, (shortcuts) => {
         const shortcut = shortcuts[typedMessage.shortcutCommand];
         if (shortcut) {
-          shortcut.keybindings[typedMessage.key].enabled = typedMessage.enable;
+          if (typedMessage.key) {
+            shortcut.keybindings[typedMessage.key].enabled = typedMessage.enable;
+          } else {
+            shortcut.enabled = typedMessage.enable;
+          }
         }
         return shortcuts;
       });
-      vscode.commands.executeCommand('shortcut-quiz.refreshActiveTreeView');
-      vscode.commands.executeCommand('shortcut-quiz.refreshInactiveTreeView');
+      vscode.commands.executeCommand('shortcut-quiz.refreshActiveTreeView', false);
+      vscode.commands.executeCommand('shortcut-quiz.refreshInactiveTreeView', false);
     }
   });
 }
@@ -164,7 +170,8 @@ function closePlayground() {
     (tg) => tg.viewColumn === playgroundEditor?.viewColumn,
   );
   const foundTab = foundTabGroup?.tabs.find(
-    (t) => (t.input as vscode.TabInputText)?.uri?.fsPath === playgroundEditor?.document?.uri?.fsPath,
+    (t) =>
+      (t.input as vscode.TabInputText)?.uri?.fsPath === playgroundEditor?.document?.uri?.fsPath,
   );
   if (!foundTab) {
     return;
@@ -201,12 +208,29 @@ export function getQuizDisposables(context: vscode.ExtensionContext) {
       const numberOfQuestions = vscode.workspace
         .getConfiguration('shortcutQuiz')
         .get<number>('numberOfQuestions', 10);
+      const selectionMethod = vscode.workspace
+        .getConfiguration('shortcutQuiz')
+        .get<'lowest_score' | 'random' | 'mixed'>('quizSelection', 'lowest_score');
       let selection = Object.entries(shortcuts).filter(([k, s]) => s.enabled);
-      _.shuffle(selection);
+      if (selectionMethod === 'lowest_score') {
+        _.shuffle(selection);
+        selection = _.sortBy(selection, (s) => s[1].learningState);
+        selection = selection.slice(0, numberOfQuestions);
+      } else if (selectionMethod === 'random') {
+        selection = _.sampleSize(selection, numberOfQuestions);
+      } else if (selectionMethod === 'mixed') {
+        const lowestScore = _.sortBy(selection, (s) => s[1].learningState).slice(
+          0,
+          _.floor(numberOfQuestions / 2),
+        );
+        // remove lowest score from selection
+        selection = selection.filter((s) => !lowestScore.some((l) => l[0] === s[0]));
+        const randomSelection = _.sampleSize(selection, _.ceil(numberOfQuestions / 2));
+        selection = [...lowestScore, ...randomSelection];
+        selection = _.shuffle(selection);
+      }
       // selection = selection.sort((a, b) => a[1].learningState - b[1].learningState);
-      selection = _.sortBy(selection, (s) => s[1].learningState);
       // selection = _.sampleSize(selection, 10);
-      selection = selection.slice(0, numberOfQuestions);
       // selection = [
       //   'workbench.action.exitZenMode',
       //   'editor.action.outdentLines',
