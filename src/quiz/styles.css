@@ -188,6 +188,20 @@ body {
 
 .disable-button {
     width: 75px;
+    background-color: hsl(0, 40%, 60%);
+    border-top-color: hsl(0, 40%, 70%);
+    border-left-color: hsl(0, 40%, 70%);
+    border-bottom-color: hsl(0, 40%, 40%);
+    border-right-color: hsl(0, 40%, 40%);
+}
+
+.enable-button {
+    width: 75px;
+    background-color: hsl(141, 20%, 62%);
+    border-top-color: hsl(141, 20%, 70%);
+    border-left-color: hsl(141, 20%, 70%);
+    border-bottom-color: hsl(141, 20%, 41%);
+    border-right-color: hsl(141, 20%, 41%);
 }
 
 .keyboard-key-connector {
@@ -226,11 +240,15 @@ body {
 .grid-layout {
     font-size: 14px;
     display: grid;
-    grid-template-columns: 1.33fr 0.67fr 120px;
+    grid-template-columns: 1.33fr 0.67fr 120px 100px;
     width: 100%;
     border: 1px solid #ccc;
     border-radius: 4px;
     overflow: hidden;
+}
+
+.grid-layout.no-status {
+    grid-template-columns: 1.33fr 0.67fr;
 }
 
 .grid-layout thead,

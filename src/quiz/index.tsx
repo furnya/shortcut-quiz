@@ -492,14 +492,19 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
 
     if (currentPossibleSteps.length === 0) return null;
 
-    const formatSteps = (steps: ShortcutSteps[], subCommand: string) => (
+    const formatSteps = (steps: ShortcutSteps[], subCommand: string, showStatus = true) => (
       <div class="shortcuts-table">
-        <table class="grid-layout">
+        <table class={'grid-layout ' + (showStatus ? '' : 'no-status')}>
           <thead>
             <tr>
               <th>Key(s)</th>
               <th>Conditions</th>
-              <th>Status</th>
+              {showStatus && (
+                <Fragment>
+                  <th>Status</th>
+                  <th></th>
+                </Fragment>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -514,25 +519,30 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
                     </Fragment>
                   ))}
                 </td>
-                <td>
-                  <span style="margin-bottom: 5px">
-                    {s.enabled ? 'Enabled for Quiz' : 'Disabled for Quiz'}
-                  </span>
-                  {s.disablingPossible && (
-                    <button
-                      disabled={s.enabled && steps.filter((x) => x.enabled).length <= 1}
-                      title={
-                        s.enabled && steps.filter((x) => x.enabled).length <= 1
-                          ? 'At least one shortcut must be enabled'
-                          : undefined
-                      }
-                      class="keyboard-key disable-button"
-                      onClick={() => this.sendUpdateKeybindingMessage(subCommand, !s.enabled, s)}
-                    >
-                      {s.enabled ? 'Disable' : 'Enable'}
-                    </button>
-                  )}
-                </td>
+                {showStatus && (
+                  <Fragment>
+                    <td>{s.enabled ? 'Enabled for Quiz' : 'Disabled for Quiz'}</td>
+                    <td>
+                      <button
+                        disabled={
+                          !s.disablingPossible ||
+                          (s.enabled && steps.filter((x) => x.enabled).length <= 1)
+                        }
+                        title={
+                          s.disablingPossible &&
+                          s.enabled &&
+                          steps.filter((x) => x.enabled).length <= 1
+                            ? 'At least one shortcut must be enabled'
+                            : undefined
+                        }
+                        class={'keyboard-key ' + (s.enabled ? 'disable-button' : 'enable-button')}
+                        onClick={() => this.sendUpdateKeybindingMessage(subCommand, !s.enabled, s)}
+                      >
+                        {s.enabled ? 'Disable' : 'Enable'}
+                      </button>
+                    </td>
+                  </Fragment>
+                )}
               </tr>
             ))}
           </tbody>
@@ -554,7 +564,7 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
               {currentRelatedShortcuts.map((r, rIndex) => (
                 <div>
                   <span>{this.renderCommand(r.title, r.command)}</span>
-                  {formatSteps(r.steps, r.command)}
+                  {formatSteps(r.steps, r.command, false)}
                 </div>
               ))}
             </div>
@@ -707,7 +717,9 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
           </div>
         </div>
         {currentShortcut.feedback && <div class="progress-container">{this.renderFeedback()}</div>}
-        <div class={`question-container ${currentShortcut.showAnswer ? 'answer-shown' : ''} ${this.availableClips.includes(`${currentShortcut.command}.mp4`) ? 'video-shown' : ''}`}>
+        <div
+          class={`question-container ${currentShortcut.showAnswer ? 'answer-shown' : ''} ${this.availableClips.includes(`${currentShortcut.command}.mp4`) ? 'video-shown' : ''}`}
+        >
           <div class="question">
             What is the shortcut for{' '}
             {this.renderCommand(currentShortcut.title, currentShortcut.command)}?
