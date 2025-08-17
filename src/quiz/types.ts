@@ -76,6 +76,7 @@ export interface SetShortcutsMessage {
   keyMappings: KeyMappings;
   maxWrongTries: number;
   debug?: boolean;
+  showVideo?: boolean;
 }
 export type OutgoingMessage =
   | SetShortcutsMessage

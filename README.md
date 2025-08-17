@@ -10,6 +10,14 @@ Shortcut Quiz is a Visual Studio Code extension designed to help users learn and
 - Visual hints for keyboard shortcuts, including modifiers like `Ctrl`, `Shift`, `Alt`, and `Meta`.
 - Integration with Visual Studio Code's shortcut data, ensuring up-to-date shortcuts.
 
+## Screenshots
+
+### Example Quiz Question
+![Example Quiz](assets/screenshots/example_quiz.png)
+
+### Example Quiz Answer
+![Example Answer](assets/screenshots/example_answer.png)
+
 ## How It Works
 
 The Shortcut Quiz extension is designed to help users master Visual Studio Code shortcuts through periodic quizzes. Here's how it works:
@@ -46,3 +54,9 @@ This extension contributes the following settings:
 
 - `shortcutQuiz.keyboardLayout`: The keyboard layout to use for shortcut matching. Default is `en`.
 - `shortcutQuiz.quizInterval`: The interval (in minutes) between quizzes. Default is `60`.
+- `shortcutQuiz.numberOfQuestions`: The number of questions in each quiz. Default is `10`.
+- `shortcutQuiz.maxWrongTries`: The maximum number of wrong tries before the answer is revealed. Default is `10`.
+- `shortcutQuiz.showPlayground`: Whether to show the playground editor for quizzes by default. Default is `true`.
+- `shortcutQuiz.showDemoVideo`: Whether to show the demo video for quizzes by default. Default is `true`.
+- `shortcutQuiz.quizSelection`: How to select the shortcuts for the next quiz. Default is `lowest_score`.
+- `shortcutQuiz.keyboardLayout`: The keyboard layout to use for shortcut matching. Default is `en`.

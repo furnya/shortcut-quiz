@@ -78,6 +78,10 @@
           "command": "shortcut-quiz.startNewQuiz",
           "when": "view == shortcutQuizShortcutTreeViewActive",
           "group": "navigation"
+        },
+        {
+          "command": "shortcut-quiz.exportGlobalState",
+          "when": "view == shortcutQuizShortcutTreeViewActive"
         }
       ],
       "view/item/context": [
@@ -116,6 +120,10 @@
         "command": "shortcut-quiz.startNewQuiz",
         "title": "Start New Shortcut Quiz",
         "icon": "assets/new_quiz.svg"
+      },
+      {
+        "command": "shortcut-quiz.exportGlobalState",
+        "title": "Export Global State (For Debugging)"
       },
       {
         "command": "shortcut-quiz.starCommand",
@@ -180,7 +188,7 @@
         "shortcutQuiz.quizInterval": {
           "type": "number",
           "default": 60,
-          "description": "Interval in minutes between quizzes"
+          "description": "Interval in minutes between quizzes. Set to 0 to disable automatic quizzes."
         },
         "shortcutQuiz.numberOfQuestions": {
           "type": "number",
@@ -199,7 +207,12 @@
         "shortcutQuiz.showPlayground": {
           "type": "boolean",
           "default": true,
-          "description": "Whether to show the playground editor for quizzes"
+          "description": "Whether to show the playground editor for quizzes by default"
+        },
+        "shortcutQuiz.showDemoVideo": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to show the demo video for quizzes by default"
         },
         "shortcutQuiz.quizSelection": {
           "type": "string",

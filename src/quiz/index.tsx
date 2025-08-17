@@ -40,6 +40,7 @@ interface ShortcutQuizState {
   playgroundOpen: boolean;
   correctCounter: number;
   debug: boolean;
+  videoShown: boolean;
 }
 
 interface ShortcutStep {
@@ -80,6 +81,7 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
       playgroundOpen: false,
       correctCounter: 0,
       debug: false,
+      videoShown: false,
     };
     this.feedbackTimer = null;
     this.fadeOutTimer = null;
@@ -116,8 +118,9 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
       configKeyboardLanguage = message.configKeyboardLanguage;
       keyMappings = message.keyMappings;
       this.maxWrongTries = message.maxWrongTries;
-      this.setState({ rawShortcuts: message.shortcuts, debug: message.debug }, () =>
-        this.initializeShortcuts(),
+      this.setState(
+        { rawShortcuts: message.shortcuts, debug: message.debug, videoShown: message.showVideo },
+        () => this.initializeShortcuts(),
       );
       window.focus();
     } else if (message.command === 'playgroundOpened') {
@@ -448,6 +451,10 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
     this.initializeShortcuts();
   };
 
+  toggleVideoPanel = () => {
+    this.setState((prevState) => ({ videoShown: !prevState.videoShown }));
+  };
+
   renderCommand(title: string, command: string) {
     return (
       <Fragment>
@@ -511,7 +518,7 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
             {steps.map((s, index) => (
               <tr key={index}>
                 <td className="keyboard-hint">{this.renderKeybinding(s.steps)}</td>
-                <td>
+                <td class="conditions-column">
                   {s.conditions?.map((condition, condIndex) => (
                     <Fragment key={condIndex}>
                       <span>{condition}</span>
@@ -563,7 +570,9 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
             <div class="related-shortcuts-list">
               {currentRelatedShortcuts.map((r, rIndex) => (
                 <div>
-                  <span>{this.renderCommand(r.title, r.command)}</span>
+                  <div class="related-shortcut-command">
+                    {this.renderCommand(r.title, r.command)}
+                  </div>
                   {formatSteps(r.steps, r.command, false)}
                 </div>
               ))}
@@ -652,8 +661,15 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
   };
 
   render() {
-    const { shortcuts, currentShortcutIndex, currentShortcut, isComplete, playgroundOpen, debug } =
-      this.state;
+    const {
+      shortcuts,
+      currentShortcutIndex,
+      currentShortcut,
+      isComplete,
+      playgroundOpen,
+      debug,
+      videoShown,
+    } = this.state;
 
     if (shortcuts.length === 0 || !currentShortcut) {
       return <div>Loading...</div>;
@@ -720,30 +736,59 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
         <div
           class={`question-container ${currentShortcut.showAnswer ? 'answer-shown' : ''} ${this.availableClips.includes(`${currentShortcut.command}.mp4`) ? 'video-shown' : ''}`}
         >
-          <div class="question">
-            What is the shortcut for{' '}
-            {this.renderCommand(currentShortcut.title, currentShortcut.command)}?
+          <div class="question-content-wrapper">
+            <div class="question-main">
+              <div class="question">
+                What is the shortcut for{' '}
+                {this.renderCommand(currentShortcut.title, currentShortcut.command)}?
+                <br />
+                {!currentShortcut.showAnswer && (
+                  <span>
+                    Simply <strong>press the keys</strong> to answer.
+                  </span>
+                )}
+              </div>
+              <button
+                class={'video-toggle-button ' + (videoShown ? 'panel-open' : '')}
+                onClick={() => this.toggleVideoPanel()}
+                id="videoToggle"
+              >
+                <span class="video-icon"></span>
+                Show Demo
+              </button>
+            </div>
+            {currentShortcut.command &&
+              this.availableClips.includes(`${currentShortcut.command}.mp4`) && (
+                <div class={'video-panel ' + (videoShown ? 'open' : '')} id="videoPanel">
+                  <div class="video-panel-header">
+                    <div class="video-panel-title">
+                      <span></span>
+                      Demo Video
+                    </div>
+                    <button
+                      class="video-panel-toggle"
+                      onClick={() => this.toggleVideoPanel()}
+                    ></button>
+                  </div>
+                  <div class="video-panel-content">
+                    <video
+                      controls
+                      autoplay
+                      loop
+                      muted
+                      key={currentShortcut.command}
+                      onClick={(e) => this.handleVideoClick(e)}
+                    >
+                      <source
+                        src={`https://github.com/furnya/shortcut-quiz/raw/refs/heads/main/assets/clips/${currentShortcut.command}.mp4`}
+                        type="video/mp4"
+                      />
+                      No video available for this shortcut.
+                    </video>
+                  </div>
+                </div>
+              )}
           </div>
-          {currentShortcut.command &&
-            this.availableClips.includes(`${currentShortcut.command}.mp4`) && (
-              <details open class="video-details">
-                <summary>Video</summary>
-                <video
-                  controls
-                  autoplay
-                  loop
-                  muted
-                  key={currentShortcut.command}
-                  onClick={(e) => this.handleVideoClick(e)}
-                >
-                  <source
-                    src={`https://github.com/furnya/shortcut-quiz/raw/refs/heads/main/assets/clips/${currentShortcut.command}.mp4`}
-                    type="video/mp4"
-                  />
-                  No video available for this shortcut.
-                </video>
-              </details>
-            )}
         </div>
         {currentShortcut.showAnswer && this.renderKeyboardHint(currentShortcut)}
         <div class="flex-spacer"></div>

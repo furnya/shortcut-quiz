@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { checkAndShowEditor, getQuizDisposables } from './quiz/quiz_setup';
 import { getShortcutsDisposables } from './shortcuts/shortcuts';
 import { getTreeViewDisposables } from './tree_view/tree_view';
+import { getExportDisposables } from './util/globalStateExport';
 
 let quizInterval: NodeJS.Timeout | null = null;
 
@@ -13,6 +14,7 @@ export async function activate(context: vscode.ExtensionContext) {
   const quizDisposables = getQuizDisposables(context);
   const shortcutsDisposables = await getShortcutsDisposables(context);
   const treeViewDisposables = getTreeViewDisposables(context);
+  const exportDisposables = await getExportDisposables(context);
 
   context.subscriptions.push(
     {
@@ -26,6 +28,7 @@ export async function activate(context: vscode.ExtensionContext) {
     ...treeViewDisposables,
     ...quizDisposables,
     ...shortcutsDisposables,
+    ...exportDisposables,
   );
 
   // only for testing

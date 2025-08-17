@@ -84,6 +84,7 @@ async function openQuizEditor(
     const message: SetShortcutsMessage = {
       command: 'setShortcuts',
       debug: context.extensionMode === vscode.ExtensionMode.Development,
+      showVideo: vscode.workspace.getConfiguration('shortcutQuiz').get('showDemoVideo'),
       shortcuts: shortcutSelection.map(([k, s]) => ({
         title: s.title,
         keys: mapKeybindings(s.keybindings),
@@ -189,10 +190,14 @@ export async function checkAndShowEditor(context: vscode.ExtensionContext) {
 }
 
 async function shouldShowEditor(context: vscode.ExtensionContext): Promise<boolean> {
+  const intervalMinutes: number = vscode.workspace
+    .getConfiguration('shortcutQuiz')
+    .get('quizInterval', 60);
+  if (intervalMinutes <= 0) {
+    return false;
+  }
   const lastShown = context.globalState.get<number>('lastShownTimestamp') || 0;
-  const nextShowTime =
-    lastShown +
-    vscode.workspace.getConfiguration('shortcutQuiz').get('quizInterval', 60) * 1000 * 60;
+  const nextShowTime = lastShown + intervalMinutes * 1000 * 60;
   return Date.now() > nextShowTime;
 }
 
@@ -223,20 +228,11 @@ export function getQuizDisposables(context: vscode.ExtensionContext) {
           0,
           _.floor(numberOfQuestions / 2),
         );
-        // remove lowest score from selection
         selection = selection.filter((s) => !lowestScore.some((l) => l[0] === s[0]));
         const randomSelection = _.sampleSize(selection, _.ceil(numberOfQuestions / 2));
         selection = [...lowestScore, ...randomSelection];
         selection = _.shuffle(selection);
       }
-      // selection = selection.sort((a, b) => a[1].learningState - b[1].learningState);
-      // selection = _.sampleSize(selection, 10);
-      // selection = [
-      //   'workbench.action.exitZenMode',
-      //   'editor.action.outdentLines',
-      //   'workbench.action.closeActiveEditor',
-      //   'breadcrumbs.focus',
-      // ].map((k) => [k, shortcuts[k]]);
       await openQuizEditor(context, selection);
     },
   );
