@@ -559,14 +559,11 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
 
     return (
       <div class="answer">
-        Answer:
+        <div class="answer-label">Answer</div>
         {formatSteps(currentPossibleSteps, currentCommand.command)}
         {currentRelatedShortcuts.length > 0 && (
           <details open class="related-shortcuts">
-            <summary>
-              Related Shortcuts
-              <hr />
-            </summary>
+            <summary>Related Shortcuts</summary>
             <div class="related-shortcuts-list">
               {currentRelatedShortcuts.map((r, rIndex) => (
                 <div>
@@ -679,11 +676,8 @@ class ShortcutQuiz extends Component<{}, ShortcutQuizState> {
       return (
         <div class="completion">
           <h2>Quiz Complete!</h2>
-          <p>You've finished the keyboard shortcuts quiz.</p>
-          <p>
-            You've answered {this.state.correctCounter} out of {shortcuts.length} questions
-            correctly.
-          </p>
+          <div class="score">{this.state.correctCounter}/{shortcuts.length}</div>
+          <div class="score-label">questions answered correctly</div>
           <button class="keyboard-key" onClick={this.handleRestart}>
             Start Over (Ctrl+Enter)
           </button>

@@ -4,9 +4,10 @@ body {
     color: var(--vscode-foreground);
     background-color: var(--vscode-editor-background);
     padding: 20px;
+    padding-bottom: 16px;
     max-width: max(80vw, 800px);
     margin: 0 auto;
-    height: calc(100vh - 40px);
+    height: calc(100vh - 36px);
 }
 
 #app {
@@ -45,6 +46,15 @@ body {
     overflow: auto;
 }
 
+.answer-label {
+    font-size: 0.75em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--vscode-descriptionForeground);
+    margin-bottom: 4px;
+}
+
 .command-title {
     font-family: Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace;
 }
@@ -54,13 +64,35 @@ body {
 
 .related-shortcuts {
     border-radius: 5px;
+    margin-top: 12px;
 }
 .related-shortcuts summary {
     cursor: pointer;
+    font-size: 0.75em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--vscode-descriptionForeground);
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+.related-shortcuts summary::-webkit-details-marker {
+    display: none;
+}
+.related-shortcuts summary::before {
+    content: "▶";
+    font-size: 0.7em;
+    transition: transform 0.15s;
+    display: inline-block;
+}
+details[open].related-shortcuts summary::before {
+    transform: rotate(90deg);
 }
 
-.related-shortcuts .related-shortcuts-list {
-}
+.related-shortcuts .related-shortcuts-list {}
 
 .shortcuts-table {
     margin-top: 5px;
@@ -71,14 +103,18 @@ body {
 }
 .shortcuts-table .conditions-column {
     word-break: break-word;
+    font-size: 0.8em;
+    color: var(--vscode-descriptionForeground);
 }
 
 .progress-container {
     display: flex;
     justify-content: center;
+    align-items: center;
     font-size: 0.9em;
     color: var(--vscode-descriptionForeground);
-    min-height: 30px;
+    min-height: 36px;
+    padding: 4px 0;
     margin-bottom: 5px;
 }
 
@@ -92,8 +128,11 @@ body {
 
 .feedback {
     animation: fade-in 0.3s ease-in-out forwards;
-    font-size: 20px;
-    height: 30px;
+    font-size: 18px;
+    height: auto;
+    line-height: 1.4;
+    padding: 4px 12px;
+    border-radius: 4px;
 }
 
 .feedback.incorrect {
@@ -141,6 +180,25 @@ body {
 .completion {
     text-align: center;
     margin-top: 30px;
+}
+
+.completion h2 {
+    font-size: 2em;
+    margin-bottom: 8px;
+}
+
+.completion .score {
+    font-size: 3.5em;
+    font-weight: bold;
+    color: var(--vscode-testing-iconPassed);
+    line-height: 1.1;
+    margin: 12px 0;
+}
+
+.completion .score-label {
+    font-size: 0.9em;
+    color: var(--vscode-descriptionForeground);
+    margin-bottom: 24px;
 }
 
 .keyboard-key {
@@ -205,13 +263,15 @@ body {
 }
 
 .keyboard-key:disabled {
-    background-color: #e0e0e0;
-    color: #a0a0a0;
-    border-top-color: #a0a0a0;
-    border-left-color: #a0a0a0;
-    border-bottom-color: #808080;
-    border-right-color: #808080;
+    background-color: #d0d0d0;
+    color: #888888;
+    border-top-color: #d8d8d8;
+    border-left-color: #d8d8d8;
+    border-bottom-color: #909090;
+    border-right-color: #909090;
+    box-shadow: 1.5px 1.5px 3px rgba(0, 0, 0, 0.5);
     cursor: not-allowed;
+    opacity: 0.55;
 }
 
 .playground-button {
@@ -227,7 +287,7 @@ body {
     display: grid;
     grid-template-columns: 1.33fr 0.67fr 120px 100px;
     width: 100%;
-    border: 1px solid #ccc;
+    border: 1px solid var(--vscode-editorGroup-border, #454545);
     border-radius: 4px;
     overflow: hidden;
 }
@@ -245,8 +305,8 @@ body {
 .grid-layout th,
 .grid-layout td {
     padding: 5px 10px;
-    border-bottom: 1px solid #ccc;
-    border-right: 1px solid #ccc;
+    border-bottom: 1px solid var(--vscode-editorGroup-border, #454545);
+    border-right: 1px solid var(--vscode-editorGroup-border, #454545);
     text-align: left;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -289,7 +349,9 @@ body {
 .header {
     display: flex;
     justify-content: space-between;
+    align-items: stretch;
     margin-bottom: 5px;
+    gap: 6px;
 }
 .header > div {
     flex: 1;
@@ -304,15 +366,33 @@ body {
 .header > div:nth-child(2) {
     justify-content: center;
 }
+.header .keyboard-key {
+    white-space: nowrap;
+    font-size: 0.78em;
+}
 .footer {
     display: flex;
     justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+    padding-top: 8px;
+}
+.footer > div {
+    display: flex;
+    gap: 2px;
+}
+.footer > button:last-child {
+    border-style: dashed;
 }
 
 .question {
-    font-size: 1.2em;
     font-size: 20px;
     flex: 1;
+}
+
+.question > span {
+    font-size: 0.8em;
+    color: var(--vscode-descriptionForeground);
 }
 
 .question-container {
@@ -324,9 +404,10 @@ body {
 }
 .question-container,
 .related-shortcut-command {
-    background-color: #181818;
+    background-color: var(--vscode-editor-inactiveSelectionBackground, #1e1e2e);
     border-radius: 10px;
-    box-shadow: 0px 2px 8px 4px #000000;
+    box-shadow: 0px 2px 8px 4px rgba(0, 0, 0, 0.6);
+    border: 1px solid var(--vscode-widget-border, rgba(255, 255, 255, 0.08));
 }
 .related-shortcut-command {
     margin-right: 6px;
